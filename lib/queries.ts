@@ -8,37 +8,43 @@ export async function getQuestions(filters?: {
   module?: string
   year?: number
 }) {
-  let query = supabase
+  const { data, error } = await supabase
     .from('questions')
     .select(`
-      *,
-      options (*),
-      subjects (name),
-      modules (name)
+      id,
+      question_text,
+      explanation,
+      difficulty,
+      year,
+      subject_id,
+      module_id,
+      options (id, option_text, is_correct, display_order),
+      subjects!questions_subject_id_fkey (name),
+      modules!questions_module_id_fkey (name)
     `)
     .order('created_at', { ascending: false })
 
-  if (filters?.subject) {
-    query = query.eq('subjects.name', filters.subject)
+  if (error) {
+    console.error('getQuestions error:', error)
+    return []  // return empty instead of throwing, so app doesn't hang
   }
 
-  const { data, error } = await query
-  if (error) throw error
+  if (!data) return []
 
-  // Transform to match your component's format
-  return data.map(q => ({
+  return data.map((q: any) => ({
     id: q.id,
     question: q.question_text,
-    options: q.options
+    options: (q.options || [])
       .sort((a: any, b: any) => a.display_order - b.display_order)
       .map((o: any) => o.option_text),
-    correct: q.options
+    correct: (q.options || [])
+      .sort((a: any, b: any) => a.display_order - b.display_order)
       .map((o: any, i: number) => ({ i, is_correct: o.is_correct }))
       .filter((o: any) => o.is_correct)
       .map((o: any) => o.i),
-    explanation: q.explanation,
-    subject: q.subjects?.name,
-    module: q.modules?.name,
+    explanation: q.explanation || '',
+    subject: q.subjects?.name || '',
+    module: q.modules?.name || '',
     year: q.year,
     difficulty: q.difficulty,
   }))
