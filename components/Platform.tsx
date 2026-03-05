@@ -1,11 +1,101 @@
 'use client'
-import { useEffect, useState } from 'react'
-import { getQuestions } from '@/lib/queries'
 import { useState, useEffect, useRef } from "react";
 
-// ── DATA ─────────────────────────────────────────────────────────────────────
-// correct is now an ARRAY of indices (0-based) — supports 1 or many answers
+// ── TYPES ─────────────────────────────────────────────────────────────────────
+interface Question {
+  id: number;
+  question: string;
+  options: string[];
+  correct: number[];
+  explanation: string;
+  subject: string;
+  module: string;
+  year: number;
+  difficulty: string;
+}
 
+interface QuizConfig {
+  questions: Question[];
+  mode: 'training' | 'exam';
+}
+
+interface ScoreResult {
+  status: 'correct' | 'partial' | 'wrong';
+  partialPct: number;
+}
+
+interface ModuleScore {
+  module: string;
+  score: number;
+}
+
+// ── DATA ─────────────────────────────────────────────────────────────────────
+const SAMPLE_QUESTIONS: Question[] = [
+  {
+    id: 1,
+    question: "Parmi les propositions suivantes, lesquelles caractérisent l'allèle ?",
+    options: ["Forme alternative d'un gène", "Situé sur un locus précis", "Toujours dominant", "Peut être récessif", "Identique chez tous les individus"],
+    correct: [0, 1, 3],
+    explanation: "Un allèle est une forme alternative d'un gène, situé sur un locus précis du chromosome. Il peut être dominant ou récessif.",
+    subject: "Génétique", module: "Génétique médicale", year: 2023, difficulty: "medium",
+  },
+  {
+    id: 2,
+    question: "Quelle est la malformation cardiaque la plus fréquente dans la trisomie 21 ?",
+    options: ["CIA", "CIV", "Canal AV", "Tétralogie de Fallot", "PCA"],
+    correct: [2],
+    explanation: "Le canal atrio-ventriculaire (CAV) complet est la cardiopathie la plus fréquente dans la trisomie 21, présente dans ~40% des cas.",
+    subject: "Cardiologie", module: "Cardiopathies congénitales", year: 2023, difficulty: "hard",
+  },
+  {
+    id: 3,
+    question: "Parmi les affirmations suivantes concernant l'insuline, lesquelles sont correctes ?",
+    options: ["Elle agit via un récepteur à tyrosine kinase", "Elle utilise l'AMPc comme second messager", "Elle stimule la glycolyse", "Elle inhibe la lipolyse", "Elle est sécrétée par les cellules α du pancréas"],
+    correct: [0, 2, 3],
+    explanation: "L'insuline agit via un récepteur à activité tyrosine kinase (pas d'AMPc). Elle stimule la glycolyse et inhibe la lipolyse. Elle est sécrétée par les cellules β.",
+    subject: "Biochimie", module: "Hormones peptidiques", year: 2022, difficulty: "hard",
+  },
+  {
+    id: 4,
+    question: "La membrane basale glomérulaire est composée de :",
+    options: ["Collagène type IV", "Laminine", "Fibronectine", "Collagène type I", "Perlécan (héparane sulfate)"],
+    correct: [0, 1, 4],
+    explanation: "La membrane basale glomérulaire est principalement constituée de collagène IV, de laminine et de protéoglycanes comme le perlécan.",
+    subject: "Histologie", module: "Rein", year: 2023, difficulty: "medium",
+  },
+  {
+    id: 5,
+    question: "L'aspirine (acide acétylsalicylique) :",
+    options: ["Inhibe irréversiblement la COX-1 et COX-2", "A une demi-vie plasmatique très courte (~20 min)", "Bloque l'agrégation plaquettaire pendant 7 à 10 jours", "Est utilisée à forte dose comme anticoagulant", "Peut provoquer un syndrome de Reye chez l'enfant"],
+    correct: [0, 1, 2, 4],
+    explanation: "L'aspirine inhibe irréversiblement les COX-1/2. Sa demi-vie est courte (~20 min) mais l'effet antiplaquettaire dure 7–10j. Contre-indiquée chez l'enfant fébrile.",
+    subject: "Pharmacologie", module: "Anti-inflammatoires", year: 2022, difficulty: "easy",
+  },
+  {
+    id: 6,
+    question: "Concernant la sensibilité linguale, quelles propositions sont vraies ?",
+    options: ["Le nerf lingual (V3) assure la sensibilité générale des 2/3 antérieurs", "La corde du tympan véhicule le goût des 2/3 antérieurs", "Le nerf glosso-pharyngien (IX) innerve le 1/3 postérieur", "Le nerf hypoglosse assure la motricité de la langue", "Le nerf vague innerve l'épiglotte"],
+    correct: [0, 1, 2, 3, 4],
+    explanation: "Toutes ces propositions sont correctes. La langue a une double innervation sensitive et motrice.",
+    subject: "Anatomie", module: "Neuroanatomie", year: 2023, difficulty: "medium",
+  },
+  {
+    id: 7,
+    question: "L'anémie de Biermer est associée à :",
+    options: ["Un déficit en vitamine B12", "Une gastrite atrophique auto-immune", "Des anticorps anti-facteur intrinsèque", "Un mégaloblastisme médullaire", "Un déficit en fer"],
+    correct: [0, 1, 2, 3],
+    explanation: "L'anémie de Biermer est une anémie pernicieuse due à un déficit en B12 par absence de facteur intrinsèque. Le fer n'est pas impliqué.",
+    subject: "Hématologie", module: "Anémies", year: 2022, difficulty: "easy",
+  },
+  {
+    id: 8,
+    question: "La respiration de Kussmaul s'observe dans :",
+    options: ["L'acidocétose diabétique", "L'insuffisance rénale chronique sévère", "L'intoxication aux salicylés", "L'alcalose métabolique", "L'acidose lactique"],
+    correct: [0, 1, 2, 4],
+    explanation: "La respiration de Kussmaul est une hyperventilation compensatrice de l'acidose métabolique. L'alcalose métabolique ne la provoque pas.",
+    subject: "Physiologie", module: "Équilibre acido-basique", year: 2023, difficulty: "medium",
+  },
+];
 
 const SUBJECTS = [...new Set(SAMPLE_QUESTIONS.map(q => q.subject))];
 
@@ -20,11 +110,11 @@ const STATS = {
     { module: "Neuroanatomie", score: 65 },
     { module: "Cardiopathies congénitales", score: 45 },
     { module: "Hormones peptidiques", score: 50 },
-  ],
+  ] as ModuleScore[],
 };
 
 // ── SCORING ───────────────────────────────────────────────────────────────────
-function scoreAnswer(correctArr, selectedSet) {
+function scoreAnswer(correctArr: number[], selectedSet: Set<number>): ScoreResult {
   if (selectedSet.size === 0) return { status: "wrong", partialPct: 0 };
   const hits = [...selectedSet].filter(i => correctArr.includes(i)).length;
   const wrongs = [...selectedSet].filter(i => !correctArr.includes(i)).length;
@@ -34,11 +124,14 @@ function scoreAnswer(correctArr, selectedSet) {
 }
 
 // ── ICONS ─────────────────────────────────────────────────────────────────────
-const Icon = ({ d, size = 18 }) => (
-  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    {Array.isArray(d) ? d.map((p, i) => <path key={i} d={p} />) : <path d={d} />}
-  </svg>
-);
+function Icon({ d, size = 18 }: { d: string; size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <path d={d} />
+    </svg>
+  );
+}
+
 const icons = {
   home: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10",
   quiz: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2 M9 5a2 2 0 002 2h2a2 2 0 002-2 M9 5a2 2 0 012-2h2a2 2 0 012 2 M9 12l2 2 4-4",
@@ -54,11 +147,11 @@ const icons = {
 };
 
 // ── CHARTS ────────────────────────────────────────────────────────────────────
-function SparkLine({ data, color = "#c8f04e" }) {
+function SparkLine({ data, color = "#c8f04e" }: { data: number[]; color?: string }) {
   const max = Math.max(...data), min = Math.min(...data);
   const W = 120, H = 36;
   const pts = data.map((v, i) => `${(i / (data.length - 1)) * W},${H - ((v - min) / (max - min + 1)) * H}`).join(" ");
-  const last = pts.split(" ").at(-1).split(",");
+  const last = pts.split(" ").at(-1)!.split(",");
   return (
     <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
       <polyline points={pts} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -67,7 +160,7 @@ function SparkLine({ data, color = "#c8f04e" }) {
   );
 }
 
-function BarChart({ data }) {
+function BarChart({ data }: { data: ModuleScore[] }) {
   const max = Math.max(...data.map(d => d.score));
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -75,7 +168,7 @@ function BarChart({ data }) {
         <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <div style={{ width: 150, fontSize: 11, color: "#aaa", textAlign: "right", flexShrink: 0, overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{d.module}</div>
           <div style={{ flex: 1, background: "#1e1e1e", borderRadius: 4, height: 8, overflow: "hidden" }}>
-            <div style={{ width: `${(d.score / max) * 100}%`, height: "100%", background: d.score < 60 ? "#ff5555" : d.score < 75 ? "#f4a821" : "#c8f04e", borderRadius: 4, transition: "width 1s ease" }} />
+            <div style={{ width: `${(d.score / max) * 100}%`, height: "100%", background: d.score < 60 ? "#ff5555" : d.score < 75 ? "#f4a821" : "#c8f04e", borderRadius: 4 }} />
           </div>
           <div style={{ width: 32, fontSize: 11, color: d.score < 60 ? "#ff5555" : d.score < 75 ? "#f4a821" : "#c8f04e", fontWeight: 700 }}>{d.score}%</div>
         </div>
@@ -85,13 +178,30 @@ function BarChart({ data }) {
 }
 
 // ── SHARED STYLES ─────────────────────────────────────────────────────────────
-const cardStyle = { background: "#111", border: "1px solid #1e1e1e", borderRadius: 14, padding: "14px 16px" };
-const navBtn = { background: "#1a1a1a", border: "1px solid #2a2a2a", color: "#ccc", borderRadius: 10, padding: "10px 16px", fontSize: 12, cursor: "pointer", fontWeight: 600 };
-const btnStyle = (bg, color, borderColor = null, small = false) => ({ background: bg, color, border: borderColor ? `1.5px solid ${borderColor}` : "none", borderRadius: 10, padding: small ? "9px 18px" : "11px 20px", fontSize: small ? 12 : 13, fontWeight: 700, cursor: "pointer" });
-const tagStyle = (color) => ({ fontSize: 10, background: `${color}22`, color, border: `1px solid ${color}44`, borderRadius: 20, padding: "2px 8px", fontWeight: 600 });
+const cardStyle: React.CSSProperties = { background: "#111", border: "1px solid #1e1e1e", borderRadius: 14, padding: "14px 16px" };
+const navBtnStyle: React.CSSProperties = { background: "#1a1a1a", border: "1px solid #2a2a2a", color: "#ccc", borderRadius: 10, padding: "10px 16px", fontSize: 12, cursor: "pointer", fontWeight: 600 };
 
-// ── OPTION BUTTON (checkbox-style for multi, radio for single) ────────────────
-function OptionBtn({ label, text, selected, feedback, isCorrectOpt, isMulti, disabled, onToggle }) {
+function btnStyle(bg: string, color: string, borderColor?: string, small?: boolean): React.CSSProperties {
+  return { background: bg, color, border: borderColor ? `1.5px solid ${borderColor}` : "none", borderRadius: 10, padding: small ? "9px 18px" : "11px 20px", fontSize: small ? 12 : 13, fontWeight: 700, cursor: "pointer" };
+}
+
+function tagStyle(color: string): React.CSSProperties {
+  return { fontSize: 10, background: `${color}22`, color, border: `1px solid ${color}44`, borderRadius: 20, padding: "2px 8px", fontWeight: 600 };
+}
+
+// ── OPTION BUTTON ─────────────────────────────────────────────────────────────
+interface OptionBtnProps {
+  label: string;
+  text: string;
+  selected: boolean;
+  feedback: boolean;
+  isCorrectOpt: boolean;
+  isMulti: boolean;
+  disabled: boolean;
+  onToggle: () => void;
+}
+
+function OptionBtn({ label, text, selected, feedback, isCorrectOpt, isMulti, disabled, onToggle }: OptionBtnProps) {
   let bg = "#111", border = "#252525", color = "#ccc", boxBg = "#1a1a1a", boxColor = "#555";
   if (feedback) {
     if (isCorrectOpt) { bg = "#c8f04e0e"; border = "#c8f04e"; color = "#d4f570"; boxBg = "#c8f04e"; boxColor = "#0a0a0a"; }
@@ -99,12 +209,10 @@ function OptionBtn({ label, text, selected, feedback, isCorrectOpt, isMulti, dis
   } else if (selected) {
     bg = "#c8f04e0e"; border = "#c8f04e88"; color = "#d4f570"; boxBg = "#c8f04e"; boxColor = "#0a0a0a";
   }
-
   return (
     <button onClick={onToggle} disabled={disabled}
-      style={{ display: "flex", alignItems: "flex-start", gap: 12, background: bg, border: `1.5px solid ${border}`, borderRadius: 12, padding: "13px 14px", cursor: disabled ? "default" : "pointer", textAlign: "left", transition: "all 0.15s", width: "100%" }}>
-      {/* checkbox/radio indicator */}
-      <div style={{ width: 22, height: 22, borderRadius: isMulti ? 5 : "50%", background: selected || (feedback && isCorrectOpt) ? boxBg : "#141414", border: `1.5px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1, transition: "all 0.15s" }}>
+      style={{ display: "flex", alignItems: "flex-start", gap: 12, background: bg, border: `1.5px solid ${border}`, borderRadius: 12, padding: "13px 14px", cursor: disabled ? "default" : "pointer", textAlign: "left", width: "100%" }}>
+      <div style={{ width: 22, height: 22, borderRadius: isMulti ? 5 : "50%", background: selected || (feedback && isCorrectOpt) ? boxBg : "#141414", border: `1.5px solid ${border}`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, marginTop: 1 }}>
         {selected || (feedback && isCorrectOpt)
           ? <svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke={boxColor} strokeWidth={3.5} strokeLinecap="round" strokeLinejoin="round"><path d="M20 6L9 17l-5-5" /></svg>
           : <span style={{ color: "#3a3a3a", fontSize: 10, fontWeight: 700 }}>{label}</span>}
@@ -117,31 +225,34 @@ function OptionBtn({ label, text, selected, feedback, isCorrectOpt, isMulti, dis
 }
 
 // ── QUIZ ──────────────────────────────────────────────────────────────────────
-function Quiz({ config, setPage }) {
+function Quiz({ config, setPage }: { config: QuizConfig; setPage: (p: string) => void }) {
   const { questions, mode } = config;
-  const [selections, setSelections] = useState({}); // { [qIdx]: Set<optIdx> }
-  const [confirmed, setConfirmed] = useState(new Set());
-  const [flagged, setFlagged] = useState(new Set());
-  const [bookmarked, setBookmarked] = useState(new Set());
+  const [selections, setSelections] = useState<Record<number, Set<number>>>({});
+  const [confirmed, setConfirmed] = useState<Set<number>>(new Set());
+  const [flagged, setFlagged] = useState<Set<number>>(new Set());
+  const [bookmarked, setBookmarked] = useState<Set<number>>(new Set());
   const [idx, setIdx] = useState(0);
-  const [phase, setPhase] = useState("question");
-  const [timeLeft, setTimeLeft] = useState(mode === "exam" ? questions.length * 90 : null);
-  const timerRef = useRef(null);
+  const [phase, setPhase] = useState<'question' | 'results'>('question');
+  const [timeLeft, setTimeLeft] = useState<number | null>(mode === "exam" ? questions.length * 90 : null);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     if (mode === "exam" && phase === "question") {
-      timerRef.current = setInterval(() => setTimeLeft(t => { if (t <= 1) { clearInterval(timerRef.current); setPhase("results"); return 0; } return t - 1; }), 1000);
+      timerRef.current = setInterval(() => setTimeLeft(t => {
+        if (t === null || t <= 1) { clearInterval(timerRef.current!); setPhase("results"); return 0; }
+        return t - 1;
+      }), 1000);
     }
-    return () => clearInterval(timerRef.current);
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [mode, phase]);
 
   const q = questions[idx];
   const isMulti = q.correct.length > 1;
-  const curSel = selections[idx] || new Set();
+  const curSel: Set<number> = selections[idx] || new Set();
   const isConfirmed = confirmed.has(idx);
   const showFeedback = mode === "training" && isConfirmed;
 
-  const toggle = (oi) => {
+  const toggle = (oi: number) => {
     if (isConfirmed) return;
     setSelections(prev => {
       const next = new Set(prev[idx] || []);
@@ -152,13 +263,12 @@ function Quiz({ config, setPage }) {
   };
 
   const confirm = () => { if (curSel.size === 0) return; setConfirmed(prev => new Set([...prev, idx])); };
-  const goSubmit = () => { clearInterval(timerRef.current); setPhase("results"); };
+  const goSubmit = () => { if (timerRef.current) clearInterval(timerRef.current); setPhase("results"); };
 
-  // ── RESULTS ──
   if (phase === "results") {
     let totalScore = 0;
     const breakdown = questions.map((q2, i) => {
-      const sel = selections[i] || new Set();
+      const sel: Set<number> = selections[i] || new Set();
       const res = scoreAnswer(q2.correct, sel);
       if (res.status === "correct") totalScore += 1;
       else if (res.status === "partial") totalScore += res.partialPct / 100;
@@ -173,11 +283,11 @@ function Quiz({ config, setPage }) {
           <div style={{ fontSize: 60, fontWeight: 900, color: scoreColor, fontFamily: "'Playfair Display', serif", lineHeight: 1 }}>{pct}%</div>
           <div style={{ fontSize: 13, color: "#666", marginTop: 6 }}>{totalScore.toFixed(1)} / {questions.length} points</div>
           <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 14 }}>
-            {[
+            {([
               { label: "Correctes", count: breakdown.filter(b => b.res.status === "correct").length, color: "#c8f04e" },
               { label: "Partielles", count: breakdown.filter(b => b.res.status === "partial").length, color: "#f4a821" },
               { label: "Fausses", count: breakdown.filter(b => b.res.status === "wrong").length, color: "#f04e4e" },
-            ].map((s, i) => (
+            ] as { label: string; count: number; color: string }[]).map((s, i) => (
               <div key={i} style={{ textAlign: "center", padding: "8px 16px", background: `${s.color}11`, border: `1px solid ${s.color}33`, borderRadius: 10 }}>
                 <div style={{ fontSize: 20, fontWeight: 800, color: s.color }}>{s.count}</div>
                 <div style={{ fontSize: 10, color: "#666" }}>{s.label}</div>
@@ -217,14 +327,12 @@ function Quiz({ config, setPage }) {
     );
   }
 
-  // ── QUESTION ──
-  const { status: feedStatus, partialPct } = showFeedback ? scoreAnswer(q.correct, curSel) : { status: null, partialPct: 0 };
+  const { status: feedStatus, partialPct } = showFeedback ? scoreAnswer(q.correct, curSel) : { status: null as null, partialPct: 0 };
   const feedbackColor = feedStatus === "correct" ? "#c8f04e" : feedStatus === "partial" ? "#f4a821" : "#f04e4e";
-  const feedbackLabel = feedStatus === "correct" ? "✓ Parfait — toutes les bonnes réponses sélectionnées !" : feedStatus === "partial" ? `~ Partielle — ${partialPct}% des bonnes réponses cochées` : "✗ Incorrecte";
+  const feedbackLabel = feedStatus === "correct" ? "✓ Parfait !" : feedStatus === "partial" ? `~ Partielle — ${partialPct}% des bonnes réponses` : "✗ Incorrecte";
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
-      {/* Sticky header */}
       <div style={{ padding: "12px 16px", background: "#0d0d0d", borderBottom: "1px solid #1a1a1a", display: "flex", alignItems: "center", gap: 12, position: "sticky", top: 0, zIndex: 10 }}>
         <button onClick={() => setPage("home")} style={{ background: "none", border: "none", color: "#666", cursor: "pointer", padding: 0 }}><Icon d={icons.arrow_left} size={18} /></button>
         <div style={{ flex: 1 }}>
@@ -240,9 +348,7 @@ function Quiz({ config, setPage }) {
         )}
       </div>
 
-      {/* Scrollable body */}
       <div style={{ flex: 1, overflow: "auto", padding: "18px 16px 110px" }}>
-        {/* Meta tags */}
         <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
           <span style={tagStyle("#c8f04e")}>{q.subject}</span>
           <span style={tagStyle("#4e80f0")}>{q.module}</span>
@@ -251,40 +357,21 @@ function Quiz({ config, setPage }) {
             : <span style={tagStyle("#555")}>◉ 1 réponse correcte</span>}
           <span style={{ ...tagStyle("#333"), marginLeft: "auto" }}>{q.year}</span>
         </div>
-
-        {/* Question */}
         <div style={{ fontSize: 15, fontWeight: 600, color: "#f0f0f0", lineHeight: 1.65, marginBottom: 6, fontFamily: "'Playfair Display', serif" }}>{q.question}</div>
+        <div style={{ fontSize: 11, color: "#3a3a3a", marginBottom: 16 }}>{isMulti ? "Cochez toutes les réponses correctes" : "Sélectionnez une seule réponse"}</div>
 
-        {/* Hint */}
-        <div style={{ fontSize: 11, color: "#3a3a3a", marginBottom: 16 }}>
-          {isMulti ? "Cochez toutes les réponses correctes" : "Sélectionnez une seule réponse"}
-        </div>
-
-        {/* Options */}
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
           {q.options.map((o, oi) => (
-            <OptionBtn
-              key={oi}
-              label={String.fromCharCode(65 + oi)}
-              text={o}
-              selected={curSel.has(oi)}
-              feedback={showFeedback}
-              isCorrectOpt={q.correct.includes(oi)}
-              isMulti={isMulti}
-              disabled={showFeedback}
-              onToggle={() => toggle(oi)}
-            />
+            <OptionBtn key={oi} label={String.fromCharCode(65 + oi)} text={o} selected={curSel.has(oi)} feedback={showFeedback} isCorrectOpt={q.correct.includes(oi)} isMulti={isMulti} disabled={showFeedback} onToggle={() => toggle(oi)} />
           ))}
         </div>
 
-        {/* Selection counter (multi-answer, before confirming) */}
         {isMulti && !isConfirmed && curSel.size > 0 && (
           <div style={{ fontSize: 11, color: "#555", textAlign: "center", marginBottom: 10 }}>
             {curSel.size} sélectionnée{curSel.size > 1 ? "s" : ""} · {q.correct.length} attendue{q.correct.length > 1 ? "s" : ""}
           </div>
         )}
 
-        {/* Validate (training) */}
         {mode === "training" && !isConfirmed && (
           <button onClick={confirm} disabled={curSel.size === 0}
             style={{ ...btnStyle(curSel.size === 0 ? "#141414" : "#c8f04e", curSel.size === 0 ? "#333" : "#0a0a0a"), width: "100%", marginBottom: 12, opacity: curSel.size === 0 ? 0.5 : 1 }}>
@@ -292,38 +379,25 @@ function Quiz({ config, setPage }) {
           </button>
         )}
 
-        {/* Feedback panel */}
-        {showFeedback && (
-          <div style={{ background: `${feedbackColor}0d`, border: `1px solid ${feedbackColor}44`, borderRadius: 12, padding: 14, animation: "fadeIn 0.3s ease" }}>
+        {showFeedback && feedStatus && (
+          <div style={{ background: `${feedbackColor}0d`, border: `1px solid ${feedbackColor}44`, borderRadius: 12, padding: 14 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: feedbackColor, marginBottom: 6 }}>{feedbackLabel}</div>
-            {isMulti && (
-              <div style={{ fontSize: 11, color: "#666", marginBottom: 8 }}>
-                Bonne{q.correct.length > 1 ? "s" : ""} réponse{q.correct.length > 1 ? "s" : ""} : {q.correct.map(i => String.fromCharCode(65 + i)).join(", ")}
-              </div>
-            )}
+            {isMulti && <div style={{ fontSize: 11, color: "#666", marginBottom: 8 }}>Bonnes réponses : {q.correct.map(i => String.fromCharCode(65 + i)).join(", ")}</div>}
             <div style={{ fontSize: 12, color: "#aaa", lineHeight: 1.65 }}>💡 {q.explanation}</div>
-          </div>
-        )}
-
-        {/* Exam mode counter */}
-        {mode === "exam" && isMulti && curSel.size > 0 && (
-          <div style={{ fontSize: 11, color: "#444", textAlign: "center", marginTop: 8 }}>
-            {curSel.size} / {q.correct.length} réponse{q.correct.length > 1 ? "s" : ""} attendue{q.correct.length > 1 ? "s" : ""}
           </div>
         )}
       </div>
 
-      {/* Fixed footer */}
       <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: "#0d0d0d", borderTop: "1px solid #1a1a1a", padding: "10px 16px", display: "flex", gap: 10, justifyContent: "space-between", alignItems: "center", zIndex: 10 }}>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={() => setFlagged(prev => { const n = new Set(prev); n.has(idx) ? n.delete(idx) : n.add(idx); return n; })} style={{ background: flagged.has(idx) ? "#f4a82122" : "#111", border: `1px solid ${flagged.has(idx) ? "#f4a821" : "#2a2a2a"}`, borderRadius: 8, padding: "8px 10px", cursor: "pointer", color: flagged.has(idx) ? "#f4a821" : "#555" }}><Icon d={icons.flag} size={15} /></button>
           <button onClick={() => setBookmarked(prev => { const n = new Set(prev); n.has(idx) ? n.delete(idx) : n.add(idx); return n; })} style={{ background: bookmarked.has(idx) ? "#4e80f022" : "#111", border: `1px solid ${bookmarked.has(idx) ? "#4e80f0" : "#2a2a2a"}`, borderRadius: 8, padding: "8px 10px", cursor: "pointer", color: bookmarked.has(idx) ? "#4e80f0" : "#555" }}><Icon d={icons.bookmark} size={15} /></button>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          {idx > 0 && <button onClick={() => setIdx(i => i - 1)} style={navBtn}>← Préc.</button>}
+          {idx > 0 && <button onClick={() => setIdx(i => i - 1)} style={navBtnStyle}>← Préc.</button>}
           {idx < questions.length - 1
-            ? <button onClick={() => setIdx(i => i + 1)} style={{ ...navBtn, background: "#c8f04e", color: "#0a0a0a", border: "none", fontWeight: 700 }}>Suiv. →</button>
-            : <button onClick={goSubmit} style={{ ...navBtn, background: "#c8f04e", color: "#0a0a0a", border: "none", fontWeight: 700 }}>Terminer ✓</button>}
+            ? <button onClick={() => setIdx(i => i + 1)} style={{ ...navBtnStyle, background: "#c8f04e", color: "#0a0a0a", border: "none", fontWeight: 700 }}>Suiv. →</button>
+            : <button onClick={goSubmit} style={{ ...navBtnStyle, background: "#c8f04e", color: "#0a0a0a", border: "none", fontWeight: 700 }}>Terminer ✓</button>}
         </div>
       </div>
     </div>
@@ -331,14 +405,14 @@ function Quiz({ config, setPage }) {
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
-function Dashboard({ setPage, setQuizConfig }) {
-  const start = (mode) => { setQuizConfig({ questions: SAMPLE_QUESTIONS, mode }); setPage("quiz"); };
+function Dashboard({ setPage, setQuizConfig }: { setPage: (p: string) => void; setQuizConfig: (c: QuizConfig) => void }) {
+  const start = (mode: 'training' | 'exam') => { setQuizConfig({ questions: SAMPLE_QUESTIONS, mode }); setPage("quiz"); };
   return (
     <div style={{ padding: "0 0 40px" }}>
       <div style={{ background: "linear-gradient(135deg, #c8f04e11 0%, #0a0a0a 60%)", borderBottom: "1px solid #1e1e1e", padding: "32px 28px 28px" }}>
         <div style={{ fontSize: 11, letterSpacing: 3, color: "#c8f04e", textTransform: "uppercase", marginBottom: 8 }}>Bon retour 👋</div>
-        <div style={{ fontSize: 26, fontWeight: 800, color: "#f0f0f0", fontFamily: "'Playfair Display', serif", marginBottom: 4 }}>Yassine Benali</div>
-        <div style={{ fontSize: 13, color: "#666" }}>Médecine — S4 · Faculté de Médecine d'Oujda</div>
+        <div style={{ fontSize: 26, fontWeight: 800, color: "#f0f0f0", fontFamily: "'Playfair Display', serif", marginBottom: 4 }}>Étudiant</div>
+        <div style={{ fontSize: 13, color: "#666" }}>Médecine · Faculté de Médecine d&apos;Oujda</div>
         <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
           <button onClick={() => start("training")} style={btnStyle("#c8f04e", "#0a0a0a")}>⚡ Entraînement</button>
           <button onClick={() => start("exam")} style={btnStyle("transparent", "#c8f04e", "#c8f04e")}>🎯 Mode Examen</button>
@@ -346,8 +420,17 @@ function Dashboard({ setPage, setQuizConfig }) {
       </div>
       <div style={{ padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20 }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-          {[{ label: "Quiz effectués", value: STATS.totalQuizzes, icon: "📋", color: "#c8f04e" }, { label: "Score moyen", value: `${STATS.avgScore}%`, icon: "🎯", color: "#4ecbf0" }, { label: "Série actuelle", value: `${STATS.streak}j`, icon: "🔥", color: "#f04e4e" }, { label: "Questions vues", value: STATS.totalQuestions, icon: "📚", color: "#b44ef0" }].map((s, i) => (
-            <div key={i} style={cardStyle}><div style={{ fontSize: 22, marginBottom: 4 }}>{s.icon}</div><div style={{ fontSize: 22, fontWeight: 800, color: s.color }}>{s.value}</div><div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>{s.label}</div></div>
+          {([
+            { label: "Quiz effectués", value: STATS.totalQuizzes, icon: "📋", color: "#c8f04e" },
+            { label: "Score moyen", value: `${STATS.avgScore}%`, icon: "🎯", color: "#4ecbf0" },
+            { label: "Série actuelle", value: `${STATS.streak}j`, icon: "🔥", color: "#f04e4e" },
+            { label: "Questions vues", value: STATS.totalQuestions, icon: "📚", color: "#b44ef0" },
+          ] as { label: string; value: string | number; icon: string; color: string }[]).map((s, i) => (
+            <div key={i} style={cardStyle}>
+              <div style={{ fontSize: 22, marginBottom: 4 }}>{s.icon}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: s.color }}>{s.value}</div>
+              <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>{s.label}</div>
+            </div>
           ))}
         </div>
         <div style={cardStyle}>
@@ -356,10 +439,18 @@ function Dashboard({ setPage, setQuizConfig }) {
             <SparkLine data={STATS.recentScores} />
           </div>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
-            {STATS.recentScores.map((s, i) => (<div key={i} style={{ textAlign: "center" }}><div style={{ width: 6, height: Math.round(s * 0.5), background: s >= 75 ? "#c8f04e" : "#444", borderRadius: 3, margin: "0 auto 4px" }} /><div style={{ fontSize: 9, color: "#555" }}>{s}</div></div>))}
+            {STATS.recentScores.map((s, i) => (
+              <div key={i} style={{ textAlign: "center" }}>
+                <div style={{ width: 6, height: Math.round(s * 0.5), background: s >= 75 ? "#c8f04e" : "#444", borderRadius: 3, margin: "0 auto 4px" }} />
+                <div style={{ fontSize: 9, color: "#555" }}>{s}</div>
+              </div>
+            ))}
           </div>
         </div>
-        <div style={cardStyle}><div style={{ fontSize: 13, fontWeight: 700, color: "#e0e0e0", marginBottom: 14 }}>Performance par module</div><BarChart data={STATS.moduleScores} /></div>
+        <div style={cardStyle}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#e0e0e0", marginBottom: 14 }}>Performance par module</div>
+          <BarChart data={STATS.moduleScores} />
+        </div>
         <div style={{ ...cardStyle, borderColor: "#ff555533", background: "#ff05050a" }}>
           <div style={{ fontSize: 12, color: "#ff5555", fontWeight: 700, marginBottom: 10 }}>⚠ Modules à renforcer</div>
           {STATS.weakModules.map((m, i) => (
@@ -375,11 +466,11 @@ function Dashboard({ setPage, setQuizConfig }) {
 }
 
 // ── QUIZ LIST ─────────────────────────────────────────────────────────────────
-function QuizList({ setPage, setQuizConfig }) {
+function QuizList({ setPage, setQuizConfig }: { setPage: (p: string) => void; setQuizConfig: (c: QuizConfig) => void }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const filtered = SAMPLE_QUESTIONS.filter(q => (filter === "all" || q.subject === filter) && q.question.toLowerCase().includes(search.toLowerCase()));
-  const startQuiz = (mode) => { setQuizConfig({ questions: filtered, mode }); setPage("quiz"); };
+  const startQuiz = (mode: 'training' | 'exam') => { setQuizConfig({ questions: filtered, mode }); setPage("quiz"); };
   return (
     <div style={{ padding: "20px 20px 40px" }}>
       <div style={{ fontSize: 18, fontWeight: 800, color: "#f0f0f0", fontFamily: "'Playfair Display', serif", marginBottom: 16 }}>Bibliothèque QCM</div>
@@ -391,7 +482,7 @@ function QuizList({ setPage, setQuizConfig }) {
         {["all", ...SUBJECTS].map(s => (<button key={s} onClick={() => setFilter(s)} style={{ flexShrink: 0, padding: "6px 14px", borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: "pointer", background: filter === s ? "#c8f04e" : "#1a1a1a", color: filter === s ? "#0a0a0a" : "#888", border: "none" }}>{s === "all" ? "Tout" : s}</button>))}
       </div>
       <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
-        <button onClick={() => startQuiz("training")} style={btnStyle("#c8f04e", "#0a0a0a", null, true)}>⚡ Entraînement</button>
+        <button onClick={() => startQuiz("training")} style={btnStyle("#c8f04e", "#0a0a0a", undefined, true)}>⚡ Entraînement</button>
         <button onClick={() => startQuiz("exam")} style={btnStyle("#1a1a1a", "#c8f04e", "#c8f04e", true)}>🎯 Examen</button>
       </div>
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
@@ -412,23 +503,28 @@ function QuizList({ setPage, setQuizConfig }) {
 }
 
 // ── BOOKMARKS ─────────────────────────────────────────────────────────────────
-function Bookmarks({ setPage, setQuizConfig }) {
+function Bookmarks({ setPage, setQuizConfig }: { setPage: (p: string) => void; setQuizConfig: (c: QuizConfig) => void }) {
   const bookmarked = SAMPLE_QUESTIONS.slice(0, 3);
   const mistakes = SAMPLE_QUESTIONS.slice(3, 6);
   return (
     <div style={{ padding: "20px 20px 40px" }}>
       <div style={{ fontSize: 18, fontWeight: 800, color: "#f0f0f0", fontFamily: "'Playfair Display', serif", marginBottom: 20 }}>Cahier de révision</div>
       <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
-        {[{ label: "📌 Favoris", count: 3 }, { label: "❌ Erreurs", count: 3 }].map((t, i) => (<div key={i} style={{ ...cardStyle, flex: 1, textAlign: "center" }}><div style={{ fontSize: 12, color: "#888" }}>{t.label}</div><div style={{ fontSize: 22, fontWeight: 800, color: "#c8f04e", marginTop: 2 }}>{t.count}</div></div>))}
+        {([{ label: "📌 Favoris", count: 3 }, { label: "❌ Erreurs", count: 3 }] as { label: string; count: number }[]).map((t, i) => (
+          <div key={i} style={{ ...cardStyle, flex: 1, textAlign: "center" }}>
+            <div style={{ fontSize: 12, color: "#888" }}>{t.label}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: "#c8f04e", marginTop: 2 }}>{t.count}</div>
+          </div>
+        ))}
       </div>
       <div style={{ fontSize: 12, fontWeight: 700, color: "#555", letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>Questions signalées</div>
       {bookmarked.map(q => (
         <div key={q.id} style={{ ...cardStyle, marginBottom: 8, cursor: "pointer" }} onClick={() => { setQuizConfig({ questions: [q], mode: "training" }); setPage("quiz"); }}>
-          <div style={{ display: "flex", gap: 6, marginBottom: 6, flexWrap: "wrap" }}><span style={tagStyle("#4e80f0")}>{q.module}</span>{q.correct.length > 1 && <span style={tagStyle("#f4a821")}>☑ {q.correct.length} rép.</span>}</div>
+          <div style={{ display: "flex", gap: 6, marginBottom: 6 }}><span style={tagStyle("#4e80f0")}>{q.module}</span>{q.correct.length > 1 && <span style={tagStyle("#f4a821")}>☑ {q.correct.length} rép.</span>}</div>
           <div style={{ fontSize: 12, color: "#ccc" }}>{q.question}</div>
         </div>
       ))}
-      <div style={{ fontSize: 12, fontWeight: 700, color: "#555", letterSpacing: 1, textTransform: "uppercase", margin: "16px 0 10px" }}>Carnet d'erreurs</div>
+      <div style={{ fontSize: 12, fontWeight: 700, color: "#555", letterSpacing: 1, textTransform: "uppercase", margin: "16px 0 10px" }}>Carnet d&apos;erreurs</div>
       {mistakes.map(q => (
         <div key={q.id} style={{ ...cardStyle, marginBottom: 8, borderColor: "#f04e4e33", cursor: "pointer" }} onClick={() => { setQuizConfig({ questions: [q], mode: "training" }); setPage("quiz"); }}>
           <div style={{ display: "flex", gap: 6, marginBottom: 6 }}><span style={tagStyle("#f04e4e")}>{q.module}</span>{q.correct.length > 1 && <span style={tagStyle("#f4a821")}>☑ {q.correct.length} rép.</span>}</div>
@@ -444,17 +540,16 @@ function Bookmarks({ setPage, setQuizConfig }) {
 function Admin() {
   const [tab, setTab] = useState("questions");
   const [csvText, setCsvText] = useState("");
-  const [parsed, setParsed] = useState([]);
+  const [parsed, setParsed] = useState<Question[]>([]);
   const [imported, setImported] = useState(false);
 
   const parseCSV = () => {
     const lines = csvText.trim().split("\n").filter(Boolean);
-    const result = lines.map(line => {
+    const result: Question[] = lines.map((line, idx) => {
       const parts = line.split(",");
-      // supports "3" (single) or "1;3;4" (multi) in the correct_answer column
       const rawCorrect = parts[6] || "1";
       const correctArr = rawCorrect.split(";").map(n => parseInt(n.trim()) - 1).filter(n => !isNaN(n));
-      return { question: parts[0], options: parts.slice(1, 6).filter(Boolean), correct: correctArr, explanation: parts[7], subject: parts[8], module: parts[9], year: parts[10] };
+      return { id: idx, question: parts[0], options: parts.slice(1, 6).filter(Boolean), correct: correctArr, explanation: parts[7] || "", subject: parts[8] || "", module: parts[9] || "", year: parseInt(parts[10]) || 2024, difficulty: "medium" };
     });
     setParsed(result);
   };
@@ -464,7 +559,7 @@ function Admin() {
       <div style={{ fontSize: 18, fontWeight: 800, color: "#f0f0f0", fontFamily: "'Playfair Display', serif", marginBottom: 4 }}>Panneau Admin</div>
       <div style={{ fontSize: 12, color: "#555", marginBottom: 20 }}>Gestion des questions et examens</div>
       <div style={{ display: "flex", background: "#111", borderRadius: 10, padding: 4, marginBottom: 20, gap: 4 }}>
-        {[["questions", "📋 Questions"], ["upload", "⬆ Import CSV"], ["stats", "📊 Stats"]].map(([id, label]) => (
+        {([["questions", "📋 Questions"], ["upload", "⬆ Import CSV"], ["stats", "📊 Stats"]] as [string, string][]).map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} style={{ flex: 1, padding: "8px 4px", borderRadius: 8, fontSize: 11, fontWeight: 600, border: "none", cursor: "pointer", background: tab === id ? "#c8f04e" : "transparent", color: tab === id ? "#0a0a0a" : "#666" }}>{label}</button>
         ))}
       </div>
@@ -472,7 +567,10 @@ function Admin() {
       {tab === "questions" && (
         <div>
           <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-            <div style={{ position: "relative", flex: 1 }}><div style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#555" }}><Icon d={icons.search} size={14} /></div><input placeholder="Rechercher..." style={{ width: "100%", background: "#111", border: "1px solid #2a2a2a", borderRadius: 8, padding: "9px 10px 9px 32px", color: "#ccc", fontSize: 12, outline: "none", boxSizing: "border-box" }} /></div>
+            <div style={{ position: "relative", flex: 1 }}>
+              <div style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#555" }}><Icon d={icons.search} size={14} /></div>
+              <input placeholder="Rechercher..." style={{ width: "100%", background: "#111", border: "1px solid #2a2a2a", borderRadius: 8, padding: "9px 10px 9px 32px", color: "#ccc", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
+            </div>
             <button style={{ ...btnStyle("#c8f04e", "#0a0a0a"), padding: "8px 14px", fontSize: 12 }}><Icon d={icons.plus} size={14} /></button>
           </div>
           {SAMPLE_QUESTIONS.slice(0, 5).map((q, i) => (
@@ -497,33 +595,25 @@ function Admin() {
           <div style={{ ...cardStyle, marginBottom: 14 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: "#c8f04e", marginBottom: 8 }}>Format CSV — multi-réponses supportées</div>
             <div style={{ fontSize: 10, color: "#666", fontFamily: "monospace", background: "#0d0d0d", padding: 10, borderRadius: 6, lineHeight: 2 }}>
-              question,opt1,opt2,opt3,opt4,opt5,<span style={{ color: "#f4a821" }}>correct</span>,explication,matière,module,année<br />
-              <span style={{ color: "#555" }}>→ 1 réponse :</span> <span style={{ color: "#c8f04e" }}>3</span><br />
-              <span style={{ color: "#555" }}>→ Multi-réponses :</span> <span style={{ color: "#f4a821" }}>1;3;4</span>
+              question,opt1..opt5,<span style={{ color: "#f4a821" }}>correct</span>,explication,matière,module,année<br />
+              1 réponse: <span style={{ color: "#c8f04e" }}>3</span> · Multi: <span style={{ color: "#f4a821" }}>1;3;4</span>
             </div>
           </div>
-          <div style={{ background: "#0d0d0d", border: "2px dashed #2a2a2a", borderRadius: 12, padding: 20, textAlign: "center", marginBottom: 14 }}>
-            <div style={{ fontSize: 24, marginBottom: 8 }}>📁</div>
-            <div style={{ fontSize: 12, color: "#555" }}>Glissez un fichier CSV ici</div>
-            <div style={{ fontSize: 10, color: "#333", marginTop: 4 }}>ou collez le contenu ci-dessous</div>
-          </div>
           <textarea value={csvText} onChange={e => { setCsvText(e.target.value); setImported(false); setParsed([]); }}
-            placeholder={"Quelles sont les caractéristiques de l'allèle?,Forme alternative,Sur un locus,Toujours dominant,Peut être récessif,Identique à tous,,0;1;3,Un allèle est variable,Génétique,Génétique médicale,2023"}
+            placeholder="Question,OptionA,OptionB,OptionC,OptionD,OptionE,1;3,Explication,Matière,Module,2023"
             style={{ width: "100%", background: "#111", border: "1px solid #2a2a2a", borderRadius: 10, padding: 12, color: "#ccc", fontSize: 11, fontFamily: "monospace", minHeight: 100, outline: "none", resize: "vertical", boxSizing: "border-box", marginBottom: 10 }} />
           <button onClick={parseCSV} style={{ ...btnStyle("#c8f04e", "#0a0a0a"), width: "100%", marginBottom: 10 }}>Analyser le CSV</button>
           {parsed.length > 0 && !imported && (
             <div>
-              <div style={{ fontSize: 12, color: "#888", marginBottom: 10 }}>{parsed.length} question(s) détectée(s) :</div>
+              <div style={{ fontSize: 12, color: "#888", marginBottom: 10 }}>{parsed.length} question(s) détectée(s)</div>
               {parsed.map((p, i) => (
                 <div key={i} style={{ ...cardStyle, marginBottom: 6, borderColor: "#c8f04e33" }}>
-                  <div style={{ display: "flex", gap: 6, marginBottom: 4, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", gap: 6, marginBottom: 4 }}>
                     <div style={{ fontSize: 11, color: "#c8f04e", fontWeight: 700 }}>Q{i + 1} · {p.subject || "N/A"}</div>
                     {p.correct.length > 1 && <span style={tagStyle("#f4a821")}>☑ {p.correct.length} réponses</span>}
                   </div>
                   <div style={{ fontSize: 12, color: "#ccc", marginBottom: 4 }}>{p.question}</div>
-                  <div style={{ fontSize: 10, color: "#555" }}>
-                    {p.options.filter(Boolean).length} options · Réponse{p.correct.length > 1 ? "s" : ""} : {p.correct.map(c => String.fromCharCode(65 + c)).join(", ")}
-                  </div>
+                  <div style={{ fontSize: 10, color: "#555" }}>Réponses : {p.correct.map(c => String.fromCharCode(65 + c)).join(", ")}</div>
                 </div>
               ))}
               <button onClick={() => setImported(true)} style={{ ...btnStyle("#c8f04e", "#0a0a0a"), width: "100%", marginTop: 8 }}>✓ Importer {parsed.length} question{parsed.length > 1 ? "s" : ""}</button>
@@ -536,14 +626,21 @@ function Admin() {
       {tab === "stats" && (
         <div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
-            {[{ label: "Total questions", value: "8", icon: "📋" }, { label: "Utilisateurs", value: "124", icon: "👥" }, { label: "Quiz effectués", value: "1,284", icon: "🎯" }, { label: "Score moyen", value: "71%", icon: "📊" }].map((s, i) => (<div key={i} style={cardStyle}><div style={{ fontSize: 20, marginBottom: 4 }}>{s.icon}</div><div style={{ fontSize: 20, fontWeight: 800, color: "#c8f04e" }}>{s.value}</div><div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>{s.label}</div></div>))}
+            {([{ label: "Total questions", value: "8", icon: "📋" }, { label: "Utilisateurs", value: "124", icon: "👥" }, { label: "Quiz effectués", value: "1,284", icon: "🎯" }, { label: "Score moyen", value: "71%", icon: "📊" }] as { label: string; value: string; icon: string }[]).map((s, i) => (
+              <div key={i} style={cardStyle}><div style={{ fontSize: 20, marginBottom: 4 }}>{s.icon}</div><div style={{ fontSize: 20, fontWeight: 800, color: "#c8f04e" }}>{s.value}</div><div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>{s.label}</div></div>
+            ))}
           </div>
           <div style={cardStyle}>
             <div style={{ fontSize: 12, fontWeight: 700, color: "#e0e0e0", marginBottom: 12 }}>Questions les plus échouées</div>
             {SAMPLE_QUESTIONS.slice(0, 4).map((q, i) => (
               <div key={i} style={{ padding: "8px 0", borderBottom: i < 3 ? "1px solid #1a1a1a" : "none" }}>
                 <div style={{ fontSize: 11, color: "#ccc", marginBottom: 3 }}>{q.question.slice(0, 55)}…</div>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}><div style={{ flex: 1, height: 4, background: "#1a1a1a", borderRadius: 2, overflow: "hidden" }}><div style={{ width: `${[68, 52, 45, 71][i]}%`, height: "100%", background: "#f04e4e", borderRadius: 2 }} /></div><div style={{ fontSize: 10, color: "#f04e4e", fontWeight: 700 }}>{[68, 52, 45, 71][i]}% erreurs</div></div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ flex: 1, height: 4, background: "#1a1a1a", borderRadius: 2, overflow: "hidden" }}>
+                    <div style={{ width: `${([68, 52, 45, 71] as number[])[i]}%`, height: "100%", background: "#f04e4e", borderRadius: 2 }} />
+                  </div>
+                  <div style={{ fontSize: 10, color: "#f04e4e", fontWeight: 700 }}>{([68, 52, 45, 71] as number[])[i]}% erreurs</div>
+                </div>
               </div>
             ))}
           </div>
@@ -555,23 +652,16 @@ function Admin() {
 
 // ── APP ───────────────────────────────────────────────────────────────────────
 export default function App() {
-const [questions, setQuestions] = useState([])
-const [loading, setLoading] = useState(true)
-
-useEffect(() => {
-  getQuestions().then(q => {
-    setQuestions(q)
-    setLoading(false)
-  })
-}, [])
   const [page, setPage] = useState("home");
-  const [quizConfig, setQuizConfig] = useState(null);
-  const NAV = [
-    { id: "home", icon: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10", label: "Accueil" },
-    { id: "quizlist", icon: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2 M9 5a2 2 0 002 2h2a2 2 0 002-2 M9 5a2 2 0 012-2h2a2 2 0 012 2 M9 12l2 2 4-4", label: "QCMs" },
-    { id: "bookmarks", icon: "M19 21l-7-5-7 5V5a2 2 0 012-2h10a2 2 0 012 2z", label: "Révision" },
-    { id: "admin", icon: "M12 2L2 7l10 5 10-5-10-5 M2 17l10 5 10-5 M2 12l10 5 10-5", label: "Admin" },
+  const [quizConfig, setQuizConfig] = useState<QuizConfig | null>(null);
+
+  const NAV: { id: string; icon: string; label: string }[] = [
+    { id: "home", icon: icons.home, label: "Accueil" },
+    { id: "quizlist", icon: icons.quiz, label: "QCMs" },
+    { id: "bookmarks", icon: icons.bookmark, label: "Révision" },
+    { id: "admin", icon: icons.admin, label: "Admin" },
   ];
+
   return (
     <div style={{ fontFamily: "'DM Sans', 'Segoe UI', sans-serif", background: "#0a0a0a", color: "#e0e0e0", minHeight: "100vh", maxWidth: 480, margin: "0 auto", position: "relative" }}>
       <style>{`
@@ -592,7 +682,7 @@ useEffect(() => {
         <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: "#0d0d0d", borderTop: "1px solid #1a1a1a", display: "flex", zIndex: 100 }}>
           {NAV.map(n => (
             <button key={n.id} onClick={() => setPage(n.id)} style={{ flex: 1, padding: "10px 4px 12px", background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, position: "relative" }}>
-              <div style={{ color: page === n.id ? "#c8f04e" : "#444", transition: "color 0.15s" }}><Icon d={n.icon} size={20} /></div>
+              <div style={{ color: page === n.id ? "#c8f04e" : "#444" }}><Icon d={n.icon} size={20} /></div>
               <div style={{ fontSize: 9, fontWeight: 600, color: page === n.id ? "#c8f04e" : "#333", letterSpacing: 0.5 }}>{n.label}</div>
               {page === n.id && <div style={{ width: 20, height: 2, background: "#c8f04e", borderRadius: 1, position: "absolute", bottom: 0 }} />}
             </button>
