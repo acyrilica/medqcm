@@ -346,8 +346,7 @@ function Dashboard({ questions, setPage, setQuizConfig }: { questions: Question[
       </div>
 
       <div style={{ padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20 }}>
-        <div style={ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))"}>
-          {([
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 12 }}>          {([
             { label: "Questions", value: questions.length, icon: "📋", color: "#c8f04e" },
             { label: "Matières", value: subjects.length, icon: "📚", color: "#4ecbf0" },
             { label: "Multi-réponses", value: questions.filter(q => q.correct.length > 1).length, icon: "☑", color: "#f04e4e" },
