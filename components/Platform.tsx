@@ -1,7 +1,5 @@
 'use client'
 import { useState, useEffect, useRef } from "react";
-import { createClient } from '@/lib/supabase';
-import { getQuestions, getUserStats, saveAttempt, toggleBookmark } from '@/lib/queries';
 
 // ── TYPES ─────────────────────────────────────────────────────────────────────
 interface Question {
@@ -15,11 +13,105 @@ interface Question {
   year: number;
   difficulty: string;
 }
-interface QuizConfig { questions: Question[]; mode: 'training' | 'exam'; }
-interface ScoreResult { status: 'correct' | 'partial' | 'wrong'; partialPct: number; }
-interface ModuleScore { module: string; score: number; }
-interface UserProfile { id: string; name: string; role: 'student' | 'admin'; }
-interface StatsData { totalQuizzes: number; avgScore: number; recentScores: number[]; moduleScores: ModuleScore[]; weakModules: string[]; }
+
+interface QuizConfig {
+  questions: Question[];
+  mode: 'training' | 'exam';
+}
+
+interface ScoreResult {
+  status: 'correct' | 'partial' | 'wrong';
+  partialPct: number;
+}
+
+interface ModuleScore {
+  module: string;
+  score: number;
+}
+
+// ── DATA ─────────────────────────────────────────────────────────────────────
+const SAMPLE_QUESTIONS: Question[] = [
+  {
+    id: 1,
+    question: "Parmi les propositions suivantes, lesquelles caractérisent l'allèle ?",
+    options: ["Forme alternative d'un gène", "Situé sur un locus précis", "Toujours dominant", "Peut être récessif", "Identique chez tous les individus"],
+    correct: [0, 1, 3],
+    explanation: "Un allèle est une forme alternative d'un gène, situé sur un locus précis du chromosome. Il peut être dominant ou récessif.",
+    subject: "Génétique", module: "Génétique médicale", year: 2023, difficulty: "medium",
+  },
+  {
+    id: 2,
+    question: "Quelle est la malformation cardiaque la plus fréquente dans la trisomie 21 ?",
+    options: ["CIA", "CIV", "Canal AV", "Tétralogie de Fallot", "PCA"],
+    correct: [2],
+    explanation: "Le canal atrio-ventriculaire (CAV) complet est la cardiopathie la plus fréquente dans la trisomie 21, présente dans ~40% des cas.",
+    subject: "Cardiologie", module: "Cardiopathies congénitales", year: 2023, difficulty: "hard",
+  },
+  {
+    id: 3,
+    question: "Parmi les affirmations suivantes concernant l'insuline, lesquelles sont correctes ?",
+    options: ["Elle agit via un récepteur à tyrosine kinase", "Elle utilise l'AMPc comme second messager", "Elle stimule la glycolyse", "Elle inhibe la lipolyse", "Elle est sécrétée par les cellules α du pancréas"],
+    correct: [0, 2, 3],
+    explanation: "L'insuline agit via un récepteur à activité tyrosine kinase (pas d'AMPc). Elle stimule la glycolyse et inhibe la lipolyse. Elle est sécrétée par les cellules β.",
+    subject: "Biochimie", module: "Hormones peptidiques", year: 2022, difficulty: "hard",
+  },
+  {
+    id: 4,
+    question: "La membrane basale glomérulaire est composée de :",
+    options: ["Collagène type IV", "Laminine", "Fibronectine", "Collagène type I", "Perlécan (héparane sulfate)"],
+    correct: [0, 1, 4],
+    explanation: "La membrane basale glomérulaire est principalement constituée de collagène IV, de laminine et de protéoglycanes comme le perlécan.",
+    subject: "Histologie", module: "Rein", year: 2023, difficulty: "medium",
+  },
+  {
+    id: 5,
+    question: "L'aspirine (acide acétylsalicylique) :",
+    options: ["Inhibe irréversiblement la COX-1 et COX-2", "A une demi-vie plasmatique très courte (~20 min)", "Bloque l'agrégation plaquettaire pendant 7 à 10 jours", "Est utilisée à forte dose comme anticoagulant", "Peut provoquer un syndrome de Reye chez l'enfant"],
+    correct: [0, 1, 2, 4],
+    explanation: "L'aspirine inhibe irréversiblement les COX-1/2. Sa demi-vie est courte (~20 min) mais l'effet antiplaquettaire dure 7–10j. Contre-indiquée chez l'enfant fébrile.",
+    subject: "Pharmacologie", module: "Anti-inflammatoires", year: 2022, difficulty: "easy",
+  },
+  {
+    id: 6,
+    question: "Concernant la sensibilité linguale, quelles propositions sont vraies ?",
+    options: ["Le nerf lingual (V3) assure la sensibilité générale des 2/3 antérieurs", "La corde du tympan véhicule le goût des 2/3 antérieurs", "Le nerf glosso-pharyngien (IX) innerve le 1/3 postérieur", "Le nerf hypoglosse assure la motricité de la langue", "Le nerf vague innerve l'épiglotte"],
+    correct: [0, 1, 2, 3, 4],
+    explanation: "Toutes ces propositions sont correctes. La langue a une double innervation sensitive et motrice.",
+    subject: "Anatomie", module: "Neuroanatomie", year: 2023, difficulty: "medium",
+  },
+  {
+    id: 7,
+    question: "L'anémie de Biermer est associée à :",
+    options: ["Un déficit en vitamine B12", "Une gastrite atrophique auto-immune", "Des anticorps anti-facteur intrinsèque", "Un mégaloblastisme médullaire", "Un déficit en fer"],
+    correct: [0, 1, 2, 3],
+    explanation: "L'anémie de Biermer est une anémie pernicieuse due à un déficit en B12 par absence de facteur intrinsèque. Le fer n'est pas impliqué.",
+    subject: "Hématologie", module: "Anémies", year: 2022, difficulty: "easy",
+  },
+  {
+    id: 8,
+    question: "La respiration de Kussmaul s'observe dans :",
+    options: ["L'acidocétose diabétique", "L'insuffisance rénale chronique sévère", "L'intoxication aux salicylés", "L'alcalose métabolique", "L'acidose lactique"],
+    correct: [0, 1, 2, 4],
+    explanation: "La respiration de Kussmaul est une hyperventilation compensatrice de l'acidose métabolique. L'alcalose métabolique ne la provoque pas.",
+    subject: "Physiologie", module: "Équilibre acido-basique", year: 2023, difficulty: "medium",
+  },
+];
+
+const SUBJECTS = [...new Set(SAMPLE_QUESTIONS.map(q => q.subject))];
+
+const STATS = {
+  totalQuizzes: 47, avgScore: 72, streak: 12, totalQuestions: 384,
+  weakModules: ["Cardiopathies congénitales", "Hormones peptidiques"],
+  recentScores: [65, 70, 68, 75, 72, 80, 78, 83, 72, 76],
+  moduleScores: [
+    { module: "Génétique médicale", score: 85 },
+    { module: "Anémies", score: 90 },
+    { module: "Anti-inflammatoires", score: 78 },
+    { module: "Neuroanatomie", score: 65 },
+    { module: "Cardiopathies congénitales", score: 45 },
+    { module: "Hormones peptidiques", score: 50 },
+  ] as ModuleScore[],
+};
 
 // ── SCORING ───────────────────────────────────────────────────────────────────
 function scoreAnswer(correctArr: number[], selectedSet: Set<number>): ScoreResult {
@@ -39,6 +131,7 @@ function Icon({ d, size = 18 }: { d: string; size?: number }) {
     </svg>
   );
 }
+
 const icons = {
   home: "M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z M9 22V12h6v10",
   quiz: "M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2 M9 5a2 2 0 002 2h2a2 2 0 002-2 M9 5a2 2 0 012-2h2a2 2 0 012 2 M9 12l2 2 4-4",
@@ -51,12 +144,10 @@ const icons = {
   plus: "M12 5v14 M5 12h14",
   trash: "M3 6h18 M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a1 1 0 011-1h4a1 1 0 011 1v2",
   edit: "M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7 M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z",
-  logout: "M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4 M16 17l5-5-5-5 M21 12H9",
 };
 
 // ── CHARTS ────────────────────────────────────────────────────────────────────
 function SparkLine({ data, color = "#c8f04e" }: { data: number[]; color?: string }) {
-  if (!data.length) return null;
   const max = Math.max(...data), min = Math.min(...data);
   const W = 120, H = 36;
   const pts = data.map((v, i) => `${(i / (data.length - 1)) * W},${H - ((v - min) / (max - min + 1)) * H}`).join(" ");
@@ -68,6 +159,7 @@ function SparkLine({ data, color = "#c8f04e" }: { data: number[]; color?: string
     </svg>
   );
 }
+
 function BarChart({ data }: { data: ModuleScore[] }) {
   const max = Math.max(...data.map(d => d.score));
   return (
@@ -88,21 +180,35 @@ function BarChart({ data }: { data: ModuleScore[] }) {
 // ── SHARED STYLES ─────────────────────────────────────────────────────────────
 const cardStyle: React.CSSProperties = { background: "#111", border: "1px solid #1e1e1e", borderRadius: 14, padding: "14px 16px" };
 const navBtnStyle: React.CSSProperties = { background: "#1a1a1a", border: "1px solid #2a2a2a", color: "#ccc", borderRadius: 10, padding: "10px 16px", fontSize: 12, cursor: "pointer", fontWeight: 600 };
+
 function btnStyle(bg: string, color: string, borderColor?: string, small?: boolean): React.CSSProperties {
   return { background: bg, color, border: borderColor ? `1.5px solid ${borderColor}` : "none", borderRadius: 10, padding: small ? "9px 18px" : "11px 20px", fontSize: small ? 12 : 13, fontWeight: 700, cursor: "pointer" };
 }
+
 function tagStyle(color: string): React.CSSProperties {
   return { fontSize: 10, background: `${color}22`, color, border: `1px solid ${color}44`, borderRadius: 20, padding: "2px 8px", fontWeight: 600 };
 }
 
 // ── OPTION BUTTON ─────────────────────────────────────────────────────────────
-interface OptionBtnProps { label: string; text: string; selected: boolean; feedback: boolean; isCorrectOpt: boolean; isMulti: boolean; disabled: boolean; onToggle: () => void; }
+interface OptionBtnProps {
+  label: string;
+  text: string;
+  selected: boolean;
+  feedback: boolean;
+  isCorrectOpt: boolean;
+  isMulti: boolean;
+  disabled: boolean;
+  onToggle: () => void;
+}
+
 function OptionBtn({ label, text, selected, feedback, isCorrectOpt, isMulti, disabled, onToggle }: OptionBtnProps) {
   let bg = "#111", border = "#252525", color = "#ccc", boxBg = "#1a1a1a", boxColor = "#555";
   if (feedback) {
     if (isCorrectOpt) { bg = "#c8f04e0e"; border = "#c8f04e"; color = "#d4f570"; boxBg = "#c8f04e"; boxColor = "#0a0a0a"; }
     else if (selected) { bg = "#f04e4e0e"; border = "#f04e4e"; color = "#f07070"; boxBg = "#f04e4e"; boxColor = "#fff"; }
-  } else if (selected) { bg = "#c8f04e0e"; border = "#c8f04e88"; color = "#d4f570"; boxBg = "#c8f04e"; boxColor = "#0a0a0a"; }
+  } else if (selected) {
+    bg = "#c8f04e0e"; border = "#c8f04e88"; color = "#d4f570"; boxBg = "#c8f04e"; boxColor = "#0a0a0a";
+  }
   return (
     <button onClick={onToggle} disabled={disabled}
       style={{ display: "flex", alignItems: "flex-start", gap: 12, background: bg, border: `1.5px solid ${border}`, borderRadius: 12, padding: "13px 14px", cursor: disabled ? "default" : "pointer", textAlign: "left", width: "100%" }}>
@@ -119,7 +225,7 @@ function OptionBtn({ label, text, selected, feedback, isCorrectOpt, isMulti, dis
 }
 
 // ── QUIZ ──────────────────────────────────────────────────────────────────────
-function Quiz({ config, setPage, user }: { config: QuizConfig; setPage: (p: string) => void; user: UserProfile | null }) {
+function Quiz({ config, setPage }: { config: QuizConfig; setPage: (p: string) => void }) {
   const { questions, mode } = config;
   const [selections, setSelections] = useState<Record<number, Set<number>>>({});
   const [confirmed, setConfirmed] = useState<Set<number>>(new Set());
@@ -128,7 +234,6 @@ function Quiz({ config, setPage, user }: { config: QuizConfig; setPage: (p: stri
   const [idx, setIdx] = useState(0);
   const [phase, setPhase] = useState<'question' | 'results'>('question');
   const [timeLeft, setTimeLeft] = useState<number | null>(mode === "exam" ? questions.length * 90 : null);
-  const [saving, setSaving] = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -156,33 +261,9 @@ function Quiz({ config, setPage, user }: { config: QuizConfig; setPage: (p: stri
       return { ...prev, [idx]: next };
     });
   };
+
   const confirm = () => { if (curSel.size === 0) return; setConfirmed(prev => new Set([...prev, idx])); };
-
-  const goSubmit = async () => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    let totalScore = 0;
-    const answerPayload: Array<{ questionId: number; selectedOptionIds: number[]; isCorrect: boolean; isPartial: boolean }> = [];
-    questions.forEach((q2, i) => {
-      const sel: Set<number> = selections[i] || new Set();
-      const res = scoreAnswer(q2.correct, sel);
-      if (res.status === "correct") totalScore += 1;
-      else if (res.status === "partial") totalScore += res.partialPct / 100;
-      answerPayload.push({ questionId: q2.id, selectedOptionIds: [...sel], isCorrect: res.status === "correct", isPartial: res.status === "partial" });
-    });
-    const pct = Math.round((totalScore / questions.length) * 100);
-    if (user) {
-      setSaving(true);
-      try { await saveAttempt(user.id, null, mode, pct, answerPayload); } catch (e) { console.error(e); }
-      setSaving(false);
-    }
-    setPhase("results");
-  };
-
-  const handleBookmark = async (qIdx: number) => {
-    const qId = questions[qIdx].id;
-    setBookmarked(prev => { const n = new Set(prev); n.has(qIdx) ? n.delete(qIdx) : n.add(qIdx); return n; });
-    if (user) { try { await toggleBookmark(user.id, qId); } catch (e) { console.error(e); } }
-  };
+  const goSubmit = () => { if (timerRef.current) clearInterval(timerRef.current); setPhase("results"); };
 
   if (phase === "results") {
     let totalScore = 0;
@@ -195,12 +276,12 @@ function Quiz({ config, setPage, user }: { config: QuizConfig; setPage: (p: stri
     });
     const pct = Math.round((totalScore / questions.length) * 100);
     const scoreColor = pct >= 75 ? "#c8f04e" : pct >= 50 ? "#f4a821" : "#f04e4e";
+
     return (
       <div style={{ padding: "24px 20px 60px" }}>
         <div style={{ textAlign: "center", marginBottom: 28 }}>
           <div style={{ fontSize: 60, fontWeight: 900, color: scoreColor, fontFamily: "'Playfair Display', serif", lineHeight: 1 }}>{pct}%</div>
           <div style={{ fontSize: 13, color: "#666", marginTop: 6 }}>{totalScore.toFixed(1)} / {questions.length} points</div>
-          {user && <div style={{ fontSize: 11, color: "#c8f04e66", marginTop: 4 }}>✓ Résultat enregistré</div>}
           <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 14 }}>
             {([
               { label: "Correctes", count: breakdown.filter(b => b.res.status === "correct").length, color: "#c8f04e" },
@@ -266,31 +347,38 @@ function Quiz({ config, setPage, user }: { config: QuizConfig; setPage: (p: stri
           </div>
         )}
       </div>
+
       <div style={{ flex: 1, overflow: "auto", padding: "18px 16px 110px" }}>
         <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
           <span style={tagStyle("#c8f04e")}>{q.subject}</span>
           <span style={tagStyle("#4e80f0")}>{q.module}</span>
-          {isMulti ? <span style={{ ...tagStyle("#f4a821"), fontWeight: 700 }}>☑ {q.correct.length} réponses correctes</span> : <span style={tagStyle("#555")}>◉ 1 réponse correcte</span>}
+          {isMulti
+            ? <span style={{ ...tagStyle("#f4a821"), fontWeight: 700 }}>☑ {q.correct.length} réponses correctes</span>
+            : <span style={tagStyle("#555")}>◉ 1 réponse correcte</span>}
           <span style={{ ...tagStyle("#333"), marginLeft: "auto" }}>{q.year}</span>
         </div>
         <div style={{ fontSize: 15, fontWeight: 600, color: "#f0f0f0", lineHeight: 1.65, marginBottom: 6, fontFamily: "'Playfair Display', serif" }}>{q.question}</div>
         <div style={{ fontSize: 11, color: "#3a3a3a", marginBottom: 16 }}>{isMulti ? "Cochez toutes les réponses correctes" : "Sélectionnez une seule réponse"}</div>
+
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
           {q.options.map((o, oi) => (
             <OptionBtn key={oi} label={String.fromCharCode(65 + oi)} text={o} selected={curSel.has(oi)} feedback={showFeedback} isCorrectOpt={q.correct.includes(oi)} isMulti={isMulti} disabled={showFeedback} onToggle={() => toggle(oi)} />
           ))}
         </div>
+
         {isMulti && !isConfirmed && curSel.size > 0 && (
           <div style={{ fontSize: 11, color: "#555", textAlign: "center", marginBottom: 10 }}>
             {curSel.size} sélectionnée{curSel.size > 1 ? "s" : ""} · {q.correct.length} attendue{q.correct.length > 1 ? "s" : ""}
           </div>
         )}
+
         {mode === "training" && !isConfirmed && (
           <button onClick={confirm} disabled={curSel.size === 0}
             style={{ ...btnStyle(curSel.size === 0 ? "#141414" : "#c8f04e", curSel.size === 0 ? "#333" : "#0a0a0a"), width: "100%", marginBottom: 12, opacity: curSel.size === 0 ? 0.5 : 1 }}>
             Valider ma réponse
           </button>
         )}
+
         {showFeedback && feedStatus && (
           <div style={{ background: `${feedbackColor}0d`, border: `1px solid ${feedbackColor}44`, borderRadius: 12, padding: 14 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: feedbackColor, marginBottom: 6 }}>{feedbackLabel}</div>
@@ -299,16 +387,17 @@ function Quiz({ config, setPage, user }: { config: QuizConfig; setPage: (p: stri
           </div>
         )}
       </div>
+
       <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: "#0d0d0d", borderTop: "1px solid #1a1a1a", padding: "10px 16px", display: "flex", gap: 10, justifyContent: "space-between", alignItems: "center", zIndex: 10 }}>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={() => setFlagged(prev => { const n = new Set(prev); n.has(idx) ? n.delete(idx) : n.add(idx); return n; })} style={{ background: flagged.has(idx) ? "#f4a82122" : "#111", border: `1px solid ${flagged.has(idx) ? "#f4a821" : "#2a2a2a"}`, borderRadius: 8, padding: "8px 10px", cursor: "pointer", color: flagged.has(idx) ? "#f4a821" : "#555" }}><Icon d={icons.flag} size={15} /></button>
-          <button onClick={() => handleBookmark(idx)} style={{ background: bookmarked.has(idx) ? "#4e80f022" : "#111", border: `1px solid ${bookmarked.has(idx) ? "#4e80f0" : "#2a2a2a"}`, borderRadius: 8, padding: "8px 10px", cursor: "pointer", color: bookmarked.has(idx) ? "#4e80f0" : "#555" }}><Icon d={icons.bookmark} size={15} /></button>
+          <button onClick={() => setBookmarked(prev => { const n = new Set(prev); n.has(idx) ? n.delete(idx) : n.add(idx); return n; })} style={{ background: bookmarked.has(idx) ? "#4e80f022" : "#111", border: `1px solid ${bookmarked.has(idx) ? "#4e80f0" : "#2a2a2a"}`, borderRadius: 8, padding: "8px 10px", cursor: "pointer", color: bookmarked.has(idx) ? "#4e80f0" : "#555" }}><Icon d={icons.bookmark} size={15} /></button>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           {idx > 0 && <button onClick={() => setIdx(i => i - 1)} style={navBtnStyle}>← Préc.</button>}
           {idx < questions.length - 1
             ? <button onClick={() => setIdx(i => i + 1)} style={{ ...navBtnStyle, background: "#c8f04e", color: "#0a0a0a", border: "none", fontWeight: 700 }}>Suiv. →</button>
-            : <button onClick={goSubmit} disabled={saving} style={{ ...navBtnStyle, background: "#c8f04e", color: "#0a0a0a", border: "none", fontWeight: 700 }}>{saving ? "..." : "Terminer ✓"}</button>}
+            : <button onClick={goSubmit} style={{ ...navBtnStyle, background: "#c8f04e", color: "#0a0a0a", border: "none", fontWeight: 700 }}>Terminer ✓</button>}
         </div>
       </div>
     </div>
@@ -316,13 +405,13 @@ function Quiz({ config, setPage, user }: { config: QuizConfig; setPage: (p: stri
 }
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
-function Dashboard({ setPage, setQuizConfig, user, questions, stats }: { setPage: (p: string) => void; setQuizConfig: (c: QuizConfig) => void; user: UserProfile | null; questions: Question[]; stats: StatsData; }) {
-  const start = (mode: 'training' | 'exam') => { if (!questions.length) return; setQuizConfig({ questions, mode }); setPage("quiz"); };
+function Dashboard({ setPage, setQuizConfig }: { setPage: (p: string) => void; setQuizConfig: (c: QuizConfig) => void }) {
+  const start = (mode: 'training' | 'exam') => { setQuizConfig({ questions: SAMPLE_QUESTIONS, mode }); setPage("quiz"); };
   return (
     <div style={{ padding: "0 0 40px" }}>
       <div style={{ background: "linear-gradient(135deg, #c8f04e11 0%, #0a0a0a 60%)", borderBottom: "1px solid #1e1e1e", padding: "32px 28px 28px" }}>
         <div style={{ fontSize: 11, letterSpacing: 3, color: "#c8f04e", textTransform: "uppercase", marginBottom: 8 }}>Bon retour 👋</div>
-        <div style={{ fontSize: 26, fontWeight: 800, color: "#f0f0f0", fontFamily: "'Playfair Display', serif", marginBottom: 4 }}>{user?.name || "Étudiant"}</div>
+        <div style={{ fontSize: 26, fontWeight: 800, color: "#f0f0f0", fontFamily: "'Playfair Display', serif", marginBottom: 4 }}>Étudiant</div>
         <div style={{ fontSize: 13, color: "#666" }}>Médecine · Faculté de Médecine d&apos;Oujda</div>
         <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
           <button onClick={() => start("training")} style={btnStyle("#c8f04e", "#0a0a0a")}>⚡ Entraînement</button>
@@ -332,10 +421,10 @@ function Dashboard({ setPage, setQuizConfig, user, questions, stats }: { setPage
       <div style={{ padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20 }}>
         <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
           {([
-            { label: "Quiz effectués", value: stats.totalQuizzes, icon: "📋", color: "#c8f04e" },
-            { label: "Score moyen", value: stats.avgScore ? `${stats.avgScore}%` : "—", icon: "🎯", color: "#4ecbf0" },
-            { label: "Questions dispo", value: questions.length, icon: "📚", color: "#b44ef0" },
-            { label: "Modules", value: stats.moduleScores.length, icon: "🗂", color: "#f04e4e" },
+            { label: "Quiz effectués", value: STATS.totalQuizzes, icon: "📋", color: "#c8f04e" },
+            { label: "Score moyen", value: `${STATS.avgScore}%`, icon: "🎯", color: "#4ecbf0" },
+            { label: "Série actuelle", value: `${STATS.streak}j`, icon: "🔥", color: "#f04e4e" },
+            { label: "Questions vues", value: STATS.totalQuestions, icon: "📚", color: "#b44ef0" },
           ] as { label: string; value: string | number; icon: string; color: string }[]).map((s, i) => (
             <div key={i} style={cardStyle}>
               <div style={{ fontSize: 22, marginBottom: 4 }}>{s.icon}</div>
@@ -344,57 +433,44 @@ function Dashboard({ setPage, setQuizConfig, user, questions, stats }: { setPage
             </div>
           ))}
         </div>
-        {stats.recentScores.length > 1 && (
-          <div style={cardStyle}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
-              <div style={{ fontSize: 13, fontWeight: 700, color: "#e0e0e0" }}>Progression récente</div>
-              <SparkLine data={stats.recentScores} />
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between" }}>
-              {stats.recentScores.map((s, i) => (
-                <div key={i} style={{ textAlign: "center" }}>
-                  <div style={{ width: 6, height: Math.round(s * 0.5), background: s >= 75 ? "#c8f04e" : "#444", borderRadius: 3, margin: "0 auto 4px" }} />
-                  <div style={{ fontSize: 9, color: "#555" }}>{s}</div>
-                </div>
-              ))}
-            </div>
+        <div style={cardStyle}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 14 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#e0e0e0" }}>Progression récente</div>
+            <SparkLine data={STATS.recentScores} />
           </div>
-        )}
-        {stats.moduleScores.length > 0 && (
-          <div style={cardStyle}>
-            <div style={{ fontSize: 13, fontWeight: 700, color: "#e0e0e0", marginBottom: 14 }}>Performance par module</div>
-            <BarChart data={stats.moduleScores} />
-          </div>
-        )}
-        {stats.weakModules.length > 0 && (
-          <div style={{ ...cardStyle, borderColor: "#ff555533", background: "#ff05050a" }}>
-            <div style={{ fontSize: 12, color: "#ff5555", fontWeight: 700, marginBottom: 10 }}>⚠ Modules à renforcer</div>
-            {stats.weakModules.map((m, i) => (
-              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: i < stats.weakModules.length - 1 ? "1px solid #1e1e1e" : "none" }}>
-                <div style={{ fontSize: 12, color: "#ccc" }}>{m}</div>
-                <button onClick={() => start("training")} style={{ fontSize: 10, background: "#ff555522", color: "#ff5555", border: "1px solid #ff555555", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}>Pratiquer</button>
+          <div style={{ display: "flex", justifyContent: "space-between" }}>
+            {STATS.recentScores.map((s, i) => (
+              <div key={i} style={{ textAlign: "center" }}>
+                <div style={{ width: 6, height: Math.round(s * 0.5), background: s >= 75 ? "#c8f04e" : "#444", borderRadius: 3, margin: "0 auto 4px" }} />
+                <div style={{ fontSize: 9, color: "#555" }}>{s}</div>
               </div>
             ))}
           </div>
-        )}
-        {!user && (
-          <div style={{ ...cardStyle, borderColor: "#c8f04e33", background: "#c8f04e08", textAlign: "center" }}>
-            <div style={{ fontSize: 12, color: "#c8f04e", fontWeight: 700, marginBottom: 6 }}>Connectez-vous pour sauvegarder vos progrès</div>
-            <a href="/login" style={{ fontSize: 11, color: "#888", textDecoration: "none" }}>Se connecter →</a>
-          </div>
-        )}
+        </div>
+        <div style={cardStyle}>
+          <div style={{ fontSize: 13, fontWeight: 700, color: "#e0e0e0", marginBottom: 14 }}>Performance par module</div>
+          <BarChart data={STATS.moduleScores} />
+        </div>
+        <div style={{ ...cardStyle, borderColor: "#ff555533", background: "#ff05050a" }}>
+          <div style={{ fontSize: 12, color: "#ff5555", fontWeight: 700, marginBottom: 10 }}>⚠ Modules à renforcer</div>
+          {STATS.weakModules.map((m, i) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "8px 0", borderBottom: i < STATS.weakModules.length - 1 ? "1px solid #1e1e1e" : "none" }}>
+              <div style={{ fontSize: 12, color: "#ccc" }}>{m}</div>
+              <button onClick={() => start("training")} style={{ fontSize: 10, background: "#ff555522", color: "#ff5555", border: "1px solid #ff555555", borderRadius: 6, padding: "4px 10px", cursor: "pointer" }}>Pratiquer</button>
+            </div>
+          ))}
+        </div>
       </div>
     </div>
   );
 }
 
 // ── QUIZ LIST ─────────────────────────────────────────────────────────────────
-function QuizList({ setPage, setQuizConfig, questions }: { setPage: (p: string) => void; setQuizConfig: (c: QuizConfig) => void; questions: Question[]; }) {
+function QuizList({ setPage, setQuizConfig }: { setPage: (p: string) => void; setQuizConfig: (c: QuizConfig) => void }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
-  const subjects = [...new Set(questions.map(q => q.subject))];
-  const filtered = questions.filter(q => (filter === "all" || q.subject === filter) && q.question.toLowerCase().includes(search.toLowerCase()));
-  const startQuiz = (mode: 'training' | 'exam') => { if (!filtered.length) return; setQuizConfig({ questions: filtered, mode }); setPage("quiz"); };
+  const filtered = SAMPLE_QUESTIONS.filter(q => (filter === "all" || q.subject === filter) && q.question.toLowerCase().includes(search.toLowerCase()));
+  const startQuiz = (mode: 'training' | 'exam') => { setQuizConfig({ questions: filtered, mode }); setPage("quiz"); };
   return (
     <div style={{ padding: "20px 20px 40px" }}>
       <div style={{ fontSize: 18, fontWeight: 800, color: "#f0f0f0", fontFamily: "'Playfair Display', serif", marginBottom: 16 }}>Bibliothèque QCM</div>
@@ -403,13 +479,12 @@ function QuizList({ setPage, setQuizConfig, questions }: { setPage: (p: string) 
         <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher une question..." style={{ width: "100%", background: "#111", border: "1px solid #2a2a2a", borderRadius: 10, padding: "10px 12px 10px 36px", color: "#e0e0e0", fontSize: 13, outline: "none", boxSizing: "border-box" }} />
       </div>
       <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8, marginBottom: 16 }}>
-        {["all", ...subjects].map(s => (<button key={s} onClick={() => setFilter(s)} style={{ flexShrink: 0, padding: "6px 14px", borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: "pointer", background: filter === s ? "#c8f04e" : "#1a1a1a", color: filter === s ? "#0a0a0a" : "#888", border: "none" }}>{s === "all" ? "Tout" : s}</button>))}
+        {["all", ...SUBJECTS].map(s => (<button key={s} onClick={() => setFilter(s)} style={{ flexShrink: 0, padding: "6px 14px", borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: "pointer", background: filter === s ? "#c8f04e" : "#1a1a1a", color: filter === s ? "#0a0a0a" : "#888", border: "none" }}>{s === "all" ? "Tout" : s}</button>))}
       </div>
       <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
         <button onClick={() => startQuiz("training")} style={btnStyle("#c8f04e", "#0a0a0a", undefined, true)}>⚡ Entraînement</button>
         <button onClick={() => startQuiz("exam")} style={btnStyle("#1a1a1a", "#c8f04e", "#c8f04e", true)}>🎯 Examen</button>
       </div>
-      {filtered.length === 0 && <div style={{ textAlign: "center", color: "#444", fontSize: 13, padding: 40 }}>Aucune question trouvée</div>}
       <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
         {filtered.map(q => (
           <div key={q.id} style={{ ...cardStyle, cursor: "pointer" }} onClick={() => { setQuizConfig({ questions: [q], mode: "training" }); setPage("quiz"); }}>
@@ -428,151 +503,147 @@ function QuizList({ setPage, setQuizConfig, questions }: { setPage: (p: string) 
 }
 
 // ── BOOKMARKS ─────────────────────────────────────────────────────────────────
-function Bookmarks({ setPage, setQuizConfig, user, questions }: { setPage: (p: string) => void; setQuizConfig: (c: QuizConfig) => void; user: UserProfile | null; questions: Question[]; }) {
-  const [bookmarkedIds, setBookmarkedIds] = useState<number[]>([]);
-  const supabase = createClient();
-  useEffect(() => {
-    if (!user) return;
-    supabase.from('bookmarks').select('question_id').eq('user_id', user.id)
-      .then(({ data }) => { if (data) setBookmarkedIds(data.map((b: { question_id: number }) => b.question_id)); });
-  }, [user]);
-  const bookmarkedQs = questions.filter(q => bookmarkedIds.includes(q.id));
-  if (!user) {
-    return (
-      <div style={{ padding: "40px 20px", textAlign: "center" }}>
-        <div style={{ fontSize: 32, marginBottom: 12 }}>🔖</div>
-        <div style={{ fontSize: 14, color: "#888", marginBottom: 16 }}>Connectez-vous pour voir vos favoris</div>
-        <a href="/login" style={{ ...btnStyle("#c8f04e", "#0a0a0a"), textDecoration: "none", display: "inline-block" }}>Se connecter</a>
-      </div>
-    );
-  }
+function Bookmarks({ setPage, setQuizConfig }: { setPage: (p: string) => void; setQuizConfig: (c: QuizConfig) => void }) {
+  const bookmarked = SAMPLE_QUESTIONS.slice(0, 3);
+  const mistakes = SAMPLE_QUESTIONS.slice(3, 6);
   return (
     <div style={{ padding: "20px 20px 40px" }}>
       <div style={{ fontSize: 18, fontWeight: 800, color: "#f0f0f0", fontFamily: "'Playfair Display', serif", marginBottom: 20 }}>Cahier de révision</div>
       <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
-        <div style={{ ...cardStyle, flex: 1, textAlign: "center" }}>
-          <div style={{ fontSize: 12, color: "#888" }}>📌 Favoris</div>
-          <div style={{ fontSize: 22, fontWeight: 800, color: "#c8f04e", marginTop: 2 }}>{bookmarkedQs.length}</div>
-        </div>
+        {([{ label: "📌 Favoris", count: 3 }, { label: "❌ Erreurs", count: 3 }] as { label: string; count: number }[]).map((t, i) => (
+          <div key={i} style={{ ...cardStyle, flex: 1, textAlign: "center" }}>
+            <div style={{ fontSize: 12, color: "#888" }}>{t.label}</div>
+            <div style={{ fontSize: 22, fontWeight: 800, color: "#c8f04e", marginTop: 2 }}>{t.count}</div>
+          </div>
+        ))}
       </div>
-      {bookmarkedQs.length === 0
-        ? <div style={{ textAlign: "center", color: "#444", fontSize: 13, padding: 40 }}>Aucun favori encore — appuyez sur 🔖 pendant un quiz pour en ajouter</div>
-        : <>
-          <div style={{ fontSize: 12, fontWeight: 700, color: "#555", letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>Questions signalées</div>
-          {bookmarkedQs.map(q => (
-            <div key={q.id} style={{ ...cardStyle, marginBottom: 8, cursor: "pointer" }} onClick={() => { setQuizConfig({ questions: [q], mode: "training" }); setPage("quiz"); }}>
-              <div style={{ display: "flex", gap: 6, marginBottom: 6 }}><span style={tagStyle("#4e80f0")}>{q.module}</span>{q.correct.length > 1 && <span style={tagStyle("#f4a821")}>☑ {q.correct.length} rép.</span>}</div>
-              <div style={{ fontSize: 12, color: "#ccc" }}>{q.question}</div>
-            </div>
-          ))}
-          <button onClick={() => { setQuizConfig({ questions: bookmarkedQs, mode: "training" }); setPage("quiz"); }} style={{ ...btnStyle("#4e80f022", "#4e80f0", "#4e80f0"), width: "100%", marginTop: 8 }}>🔁 Réviser mes favoris</button>
-        </>}
+      <div style={{ fontSize: 12, fontWeight: 700, color: "#555", letterSpacing: 1, textTransform: "uppercase", marginBottom: 10 }}>Questions signalées</div>
+      {bookmarked.map(q => (
+        <div key={q.id} style={{ ...cardStyle, marginBottom: 8, cursor: "pointer" }} onClick={() => { setQuizConfig({ questions: [q], mode: "training" }); setPage("quiz"); }}>
+          <div style={{ display: "flex", gap: 6, marginBottom: 6 }}><span style={tagStyle("#4e80f0")}>{q.module}</span>{q.correct.length > 1 && <span style={tagStyle("#f4a821")}>☑ {q.correct.length} rép.</span>}</div>
+          <div style={{ fontSize: 12, color: "#ccc" }}>{q.question}</div>
+        </div>
+      ))}
+      <div style={{ fontSize: 12, fontWeight: 700, color: "#555", letterSpacing: 1, textTransform: "uppercase", margin: "16px 0 10px" }}>Carnet d&apos;erreurs</div>
+      {mistakes.map(q => (
+        <div key={q.id} style={{ ...cardStyle, marginBottom: 8, borderColor: "#f04e4e33", cursor: "pointer" }} onClick={() => { setQuizConfig({ questions: [q], mode: "training" }); setPage("quiz"); }}>
+          <div style={{ display: "flex", gap: 6, marginBottom: 6 }}><span style={tagStyle("#f04e4e")}>{q.module}</span>{q.correct.length > 1 && <span style={tagStyle("#f4a821")}>☑ {q.correct.length} rép.</span>}</div>
+          <div style={{ fontSize: 12, color: "#ccc" }}>{q.question}</div>
+        </div>
+      ))}
+      <button onClick={() => { setQuizConfig({ questions: mistakes, mode: "training" }); setPage("quiz"); }} style={{ ...btnStyle("#f04e4e22", "#f04e4e", "#f04e4e"), width: "100%", marginTop: 8 }}>🔁 Réviser mes erreurs</button>
     </div>
   );
 }
 
 // ── ADMIN ─────────────────────────────────────────────────────────────────────
-function Admin({ questions, onQuestionsImported }: { questions: Question[]; onQuestionsImported: () => void }) {
+function Admin() {
   const [tab, setTab] = useState("questions");
   const [csvText, setCsvText] = useState("");
-  const [parsed, setParsed] = useState<Omit<Question, 'id'>[]>([]);
-  const [importing, setImporting] = useState(false);
-  const [importResult, setImportResult] = useState<{ success: boolean; message: string } | null>(null);
+  const [parsed, setParsed] = useState<Question[]>([]);
+  const [imported, setImported] = useState(false);
 
   const parseCSV = () => {
     const lines = csvText.trim().split("\n").filter(Boolean);
-    const result = lines.map(line => {
+    const result: Question[] = lines.map((line, idx) => {
       const parts = line.split(",");
       const rawCorrect = parts[6] || "1";
       const correctArr = rawCorrect.split(";").map(n => parseInt(n.trim()) - 1).filter(n => !isNaN(n));
-      return { question: parts[0], options: parts.slice(1, 6).filter(Boolean), correct: correctArr, explanation: parts[7] || "", subject: parts[8] || "", module: parts[9] || "", year: parseInt(parts[10]) || 2024, difficulty: "medium" as const };
+      return { id: idx, question: parts[0], options: parts.slice(1, 6).filter(Boolean), correct: correctArr, explanation: parts[7] || "", subject: parts[8] || "", module: parts[9] || "", year: parseInt(parts[10]) || 2024, difficulty: "medium" };
     });
-    setParsed(result); setImportResult(null);
-  };
-
-  const importToSupabase = async () => {
-    if (!parsed.length) return;
-    setImporting(true);
-    try {
-      const res = await fetch('/api/import-csv', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ questions: parsed.map(p => ({ question: p.question, explanation: p.explanation, subject: p.subject, module: p.module, year: p.year, difficulty: p.difficulty, options: p.options, correct: p.correct })) }) });
-      const data = await res.json();
-      if (res.ok) { setImportResult({ success: true, message: `✓ ${data.count} question(s) importée(s)` }); setCsvText(""); setParsed([]); onQuestionsImported(); }
-      else { setImportResult({ success: false, message: data.error || "Erreur" }); }
-    } catch { setImportResult({ success: false, message: "Erreur réseau" }); }
-    setImporting(false);
+    setParsed(result);
   };
 
   return (
     <div style={{ padding: "20px 20px 40px" }}>
       <div style={{ fontSize: 18, fontWeight: 800, color: "#f0f0f0", fontFamily: "'Playfair Display', serif", marginBottom: 4 }}>Panneau Admin</div>
-      <div style={{ fontSize: 12, color: "#555", marginBottom: 20 }}>Gestion des questions</div>
+      <div style={{ fontSize: 12, color: "#555", marginBottom: 20 }}>Gestion des questions et examens</div>
       <div style={{ display: "flex", background: "#111", borderRadius: 10, padding: 4, marginBottom: 20, gap: 4 }}>
         {([["questions", "📋 Questions"], ["upload", "⬆ Import CSV"], ["stats", "📊 Stats"]] as [string, string][]).map(([id, label]) => (
           <button key={id} onClick={() => setTab(id)} style={{ flex: 1, padding: "8px 4px", borderRadius: 8, fontSize: 11, fontWeight: 600, border: "none", cursor: "pointer", background: tab === id ? "#c8f04e" : "transparent", color: tab === id ? "#0a0a0a" : "#666" }}>{label}</button>
         ))}
       </div>
+
       {tab === "questions" && (
         <div>
-          <div style={{ fontSize: 12, color: "#555", marginBottom: 14 }}>{questions.length} question(s) dans la base</div>
-          {questions.length === 0 && <div style={{ textAlign: "center", color: "#444", fontSize: 13, padding: 40 }}>Aucune question — importez via CSV</div>}
-          {questions.slice(0, 10).map((q, i) => (
+          <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
+            <div style={{ position: "relative", flex: 1 }}>
+              <div style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#555" }}><Icon d={icons.search} size={14} /></div>
+              <input placeholder="Rechercher..." style={{ width: "100%", background: "#111", border: "1px solid #2a2a2a", borderRadius: 8, padding: "9px 10px 9px 32px", color: "#ccc", fontSize: 12, outline: "none", boxSizing: "border-box" }} />
+            </div>
+            <button style={{ ...btnStyle("#c8f04e", "#0a0a0a"), padding: "8px 14px", fontSize: 12 }}><Icon d={icons.plus} size={14} /></button>
+          </div>
+          {SAMPLE_QUESTIONS.slice(0, 5).map((q, i) => (
             <div key={i} style={{ ...cardStyle, marginBottom: 8 }}>
               <div style={{ display: "flex", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
                 <span style={tagStyle("#c8f04e")}>{q.subject}</span>
                 <span style={tagStyle("#4e80f0")}>{q.year}</span>
                 {q.correct.length > 1 && <span style={tagStyle("#f4a821")}>☑ {q.correct.length} réponses</span>}
               </div>
-              <div style={{ fontSize: 12, color: "#ccc" }}>{q.question}</div>
+              <div style={{ fontSize: 12, color: "#ccc", marginBottom: 10 }}>{q.question}</div>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button style={{ fontSize: 10, background: "#1e1e1e", color: "#888", border: "1px solid #2a2a2a", borderRadius: 6, padding: "4px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Icon d={icons.edit} size={11} /> Éditer</button>
+                <button style={{ fontSize: 10, background: "#f04e4e11", color: "#f04e4e", border: "1px solid #f04e4e33", borderRadius: 6, padding: "4px 10px", cursor: "pointer", display: "flex", alignItems: "center", gap: 4 }}><Icon d={icons.trash} size={11} /> Supprimer</button>
+              </div>
             </div>
           ))}
-          {questions.length > 10 && <div style={{ textAlign: "center", fontSize: 11, color: "#555", padding: 10 }}>+ {questions.length - 10} autres questions</div>}
         </div>
       )}
+
       {tab === "upload" && (
         <div>
           <div style={{ ...cardStyle, marginBottom: 14 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#c8f04e", marginBottom: 8 }}>Format CSV</div>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#c8f04e", marginBottom: 8 }}>Format CSV — multi-réponses supportées</div>
             <div style={{ fontSize: 10, color: "#666", fontFamily: "monospace", background: "#0d0d0d", padding: 10, borderRadius: 6, lineHeight: 2 }}>
               question,opt1..opt5,<span style={{ color: "#f4a821" }}>correct</span>,explication,matière,module,année<br />
               1 réponse: <span style={{ color: "#c8f04e" }}>3</span> · Multi: <span style={{ color: "#f4a821" }}>1;3;4</span>
             </div>
           </div>
-          <textarea value={csvText} onChange={e => { setCsvText(e.target.value); setImportResult(null); setParsed([]); }}
+          <textarea value={csvText} onChange={e => { setCsvText(e.target.value); setImported(false); setParsed([]); }}
             placeholder="Question,OptionA,OptionB,OptionC,OptionD,OptionE,1;3,Explication,Matière,Module,2023"
             style={{ width: "100%", background: "#111", border: "1px solid #2a2a2a", borderRadius: 10, padding: 12, color: "#ccc", fontSize: 11, fontFamily: "monospace", minHeight: 100, outline: "none", resize: "vertical", boxSizing: "border-box", marginBottom: 10 }} />
-          <button onClick={parseCSV} style={{ ...btnStyle("#1a1a1a", "#c8f04e", "#c8f04e"), width: "100%", marginBottom: 10 }}>Analyser le CSV</button>
-          {parsed.length > 0 && !importResult && (
+          <button onClick={parseCSV} style={{ ...btnStyle("#c8f04e", "#0a0a0a"), width: "100%", marginBottom: 10 }}>Analyser le CSV</button>
+          {parsed.length > 0 && !imported && (
             <div>
               <div style={{ fontSize: 12, color: "#888", marginBottom: 10 }}>{parsed.length} question(s) détectée(s)</div>
               {parsed.map((p, i) => (
                 <div key={i} style={{ ...cardStyle, marginBottom: 6, borderColor: "#c8f04e33" }}>
-                  <div style={{ fontSize: 11, color: "#c8f04e", fontWeight: 700, marginBottom: 4 }}>Q{i + 1} · {p.subject || "N/A"}</div>
+                  <div style={{ display: "flex", gap: 6, marginBottom: 4 }}>
+                    <div style={{ fontSize: 11, color: "#c8f04e", fontWeight: 700 }}>Q{i + 1} · {p.subject || "N/A"}</div>
+                    {p.correct.length > 1 && <span style={tagStyle("#f4a821")}>☑ {p.correct.length} réponses</span>}
+                  </div>
                   <div style={{ fontSize: 12, color: "#ccc", marginBottom: 4 }}>{p.question}</div>
                   <div style={{ fontSize: 10, color: "#555" }}>Réponses : {p.correct.map(c => String.fromCharCode(65 + c)).join(", ")}</div>
                 </div>
               ))}
-              <button onClick={importToSupabase} disabled={importing} style={{ ...btnStyle("#c8f04e", "#0a0a0a"), width: "100%", marginTop: 8, opacity: importing ? 0.7 : 1 }}>
-                {importing ? "Import en cours..." : `✓ Importer ${parsed.length} question${parsed.length > 1 ? "s" : ""} dans Supabase`}
-              </button>
+              <button onClick={() => setImported(true)} style={{ ...btnStyle("#c8f04e", "#0a0a0a"), width: "100%", marginTop: 8 }}>✓ Importer {parsed.length} question{parsed.length > 1 ? "s" : ""}</button>
             </div>
           )}
-          {importResult && (
-            <div style={{ background: importResult.success ? "#c8f04e22" : "#f04e4e22", border: `1px solid ${importResult.success ? "#c8f04e55" : "#f04e4e55"}`, borderRadius: 10, padding: 14, textAlign: "center", color: importResult.success ? "#c8f04e" : "#f04e4e", fontSize: 13, fontWeight: 700 }}>
-              {importResult.message}
-            </div>
-          )}
+          {imported && <div style={{ background: "#c8f04e22", border: "1px solid #c8f04e55", borderRadius: 10, padding: 14, textAlign: "center", color: "#c8f04e", fontSize: 13, fontWeight: 700 }}>✓ Import réussi !</div>}
         </div>
       )}
+
       {tab === "stats" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
-          {([
-            { label: "Total questions", value: String(questions.length), icon: "📋" },
-            { label: "Sujets", value: String(new Set(questions.map(q => q.subject)).size), icon: "📚" },
-            { label: "Modules", value: String(new Set(questions.map(q => q.module)).size), icon: "🗂" },
-            { label: "Multi-réponses", value: String(questions.filter(q => q.correct.length > 1).length), icon: "☑" },
-          ] as { label: string; value: string; icon: string }[]).map((s, i) => (
-            <div key={i} style={cardStyle}><div style={{ fontSize: 20, marginBottom: 4 }}>{s.icon}</div><div style={{ fontSize: 20, fontWeight: 800, color: "#c8f04e" }}>{s.value}</div><div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>{s.label}</div></div>
-          ))}
+        <div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginBottom: 16 }}>
+            {([{ label: "Total questions", value: "8", icon: "📋" }, { label: "Utilisateurs", value: "124", icon: "👥" }, { label: "Quiz effectués", value: "1,284", icon: "🎯" }, { label: "Score moyen", value: "71%", icon: "📊" }] as { label: string; value: string; icon: string }[]).map((s, i) => (
+              <div key={i} style={cardStyle}><div style={{ fontSize: 20, marginBottom: 4 }}>{s.icon}</div><div style={{ fontSize: 20, fontWeight: 800, color: "#c8f04e" }}>{s.value}</div><div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>{s.label}</div></div>
+            ))}
+          </div>
+          <div style={cardStyle}>
+            <div style={{ fontSize: 12, fontWeight: 700, color: "#e0e0e0", marginBottom: 12 }}>Questions les plus échouées</div>
+            {SAMPLE_QUESTIONS.slice(0, 4).map((q, i) => (
+              <div key={i} style={{ padding: "8px 0", borderBottom: i < 3 ? "1px solid #1a1a1a" : "none" }}>
+                <div style={{ fontSize: 11, color: "#ccc", marginBottom: 3 }}>{q.question.slice(0, 55)}…</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                  <div style={{ flex: 1, height: 4, background: "#1a1a1a", borderRadius: 2, overflow: "hidden" }}>
+                    <div style={{ width: `${([68, 52, 45, 71] as number[])[i]}%`, height: "100%", background: "#f04e4e", borderRadius: 2 }} />
+                  </div>
+                  <div style={{ fontSize: 10, color: "#f04e4e", fontWeight: 700 }}>{([68, 52, 45, 71] as number[])[i]}% erreurs</div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>
@@ -583,64 +654,12 @@ function Admin({ questions, onQuestionsImported }: { questions: Question[]; onQu
 export default function App() {
   const [page, setPage] = useState("home");
   const [quizConfig, setQuizConfig] = useState<QuizConfig | null>(null);
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [questions, setQuestions] = useState<Question[]>([]);
-  const [stats, setStats] = useState<StatsData>({ totalQuizzes: 0, avgScore: 0, recentScores: [], moduleScores: [], weakModules: [] });
-  const [loadingQuestions, setLoadingQuestions] = useState(true);
-  const supabase = createClient();
 
-  // ── Auth: use getSession (reads from cookie immediately, no network needed)
-  useEffect(() => {
-    const loadUser = async () => {
-      const { data } = await supabase.auth.getSession();
-      const session = data?.session ?? null;
-      if (!session?.user) { setUser(null); return; }
-      const { data: profile } = await supabase
-        .from('profiles').select('id, name, role').eq('id', session.user.id).single();
-      if (profile) setUser(profile as UserProfile);
-    };
-    loadUser();
-
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (_event, session) => {
-      if (!session?.user) { setUser(null); return; }
-      const { data: profile } = await supabase
-        .from('profiles').select('id, name, role').eq('id', session.user.id).single();
-      if (profile) setUser(profile as UserProfile);
-    });
-    return () => subscription.unsubscribe();
-  }, []);
-
-  // ── Questions
-  const loadQuestions = async () => {
-  setLoadingQuestions(true);
-  try {
-    const qs = await getQuestions();
-    setQuestions(qs);
-  } catch (e) {
-    console.error("loadQuestions error:", e);
-    setQuestions([]);
-  } finally {
-    setLoadingQuestions(false);  // ← this always runs even if it throws
-  }
-};
-  // ── Stats
-  useEffect(() => {
-    if (!user) return;
-    getUserStats(user.id).then(s => {
-      const moduleMap: Record<string, boolean> = {};
-      questions.forEach(q => { moduleMap[q.module] = true; });
-      const moduleScores = Object.keys(moduleMap).map(m => ({ module: m, score: s.avgScore || 0 }));
-      setStats({ totalQuizzes: s.totalQuizzes, avgScore: s.avgScore, recentScores: s.recentScores, moduleScores, weakModules: moduleScores.filter(m => m.score < 60).map(m => m.module) });
-    });
-  }, [user, questions]);
-
-  const handleLogout = async () => { await supabase.auth.signOut(); setUser(null); setPage("home"); };
-
-  const NAV = [
+  const NAV: { id: string; icon: string; label: string }[] = [
     { id: "home", icon: icons.home, label: "Accueil" },
     { id: "quizlist", icon: icons.quiz, label: "QCMs" },
     { id: "bookmarks", icon: icons.bookmark, label: "Révision" },
-    ...(user?.role === 'admin' ? [{ id: "admin", icon: icons.admin, label: "Admin" }] : []),
+    { id: "admin", icon: icons.admin, label: "Admin" },
   ];
 
   return (
@@ -649,31 +668,16 @@ export default function App() {
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&family=Playfair+Display:wght@700;800;900&display=swap');
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: #0a0a0a; } ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         button { font-family: inherit; } input, textarea { font-family: inherit; }
       `}</style>
-
-      {page !== "quiz" && user && (
-        <div style={{ position: "fixed", top: 0, right: 0, zIndex: 200, padding: "10px 16px" }}>
-          <button onClick={handleLogout} title="Déconnexion" style={{ background: "none", border: "none", color: "#333", cursor: "pointer", padding: 4 }}>
-            <Icon d={icons.logout} size={16} />
-          </button>
-        </div>
-      )}
-
       <div style={{ paddingBottom: page === "quiz" ? 0 : 64, minHeight: "100vh" }}>
-        {loadingQuestions ? (
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", color: "#333", fontSize: 13 }}>Chargement…</div>
-        ) : (
-          <>
-            {page === "home" && <Dashboard setPage={setPage} setQuizConfig={setQuizConfig} user={user} questions={questions} stats={stats} />}
-            {page === "quizlist" && <QuizList setPage={setPage} setQuizConfig={setQuizConfig} questions={questions} />}
-            {page === "quiz" && quizConfig && <Quiz config={quizConfig} setPage={setPage} user={user} />}
-            {page === "bookmarks" && <Bookmarks setPage={setPage} setQuizConfig={setQuizConfig} user={user} questions={questions} />}
-            {page === "admin" && user?.role === 'admin' && <Admin questions={questions} onQuestionsImported={loadQuestions} />}
-          </>
-        )}
+        {page === "home" && <Dashboard setPage={setPage} setQuizConfig={setQuizConfig} />}
+        {page === "quizlist" && <QuizList setPage={setPage} setQuizConfig={setQuizConfig} />}
+        {page === "quiz" && quizConfig && <Quiz config={quizConfig} setPage={setPage} />}
+        {page === "bookmarks" && <Bookmarks setPage={setPage} setQuizConfig={setQuizConfig} />}
+        {page === "admin" && <Admin />}
       </div>
-
       {page !== "quiz" && (
         <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: "#0d0d0d", borderTop: "1px solid #1a1a1a", display: "flex", zIndex: 100 }}>
           {NAV.map(n => (
