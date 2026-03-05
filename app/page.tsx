@@ -1,5 +1,5 @@
-import Platform from '@/components/Platform'
+import LandingPage from '@/components/LandingPage'
 
 export default function Home() {
-  return <Platform />
+  return <LandingPage />
 }
