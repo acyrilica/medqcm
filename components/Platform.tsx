@@ -612,13 +612,17 @@ export default function App() {
 
   // ── Questions
   const loadQuestions = async () => {
-    setLoadingQuestions(true);
-    try { const qs = await getQuestions(); setQuestions(qs); }
-    catch (e) { console.error(e); setQuestions([]); }
-    setLoadingQuestions(false);
-  };
-  useEffect(() => { loadQuestions(); }, []);
-
+  setLoadingQuestions(true);
+  try {
+    const qs = await getQuestions();
+    setQuestions(qs);
+  } catch (e) {
+    console.error("loadQuestions error:", e);
+    setQuestions([]);
+  } finally {
+    setLoadingQuestions(false);  // ← this always runs even if it throws
+  }
+};
   // ── Stats
   useEffect(() => {
     if (!user) return;
