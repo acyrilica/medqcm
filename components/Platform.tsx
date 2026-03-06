@@ -611,6 +611,20 @@ export default function App() {
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+useEffect(() => {
+  supabase.auth.getUser().then(async ({ data }) => {
+    if (data.user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('role')
+        .eq('id', data.user.id)
+        .single();
+      setIsAdmin(profile?.role === 'admin');
+    }
+  });
+}, []);
 
   useEffect(() => {
     fetchQuestions().then(q => { setQuestions(q); setLoading(false); });
