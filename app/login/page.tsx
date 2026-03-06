@@ -105,23 +105,6 @@ function LoginContent() {
                       <option value="6">6ème année</option>
                     </select>
                   </div>
-                  <div>
-                    <label style={labelStyle}>Semestre</label>
-                    <select value={semester} onChange={e => setSemester(e.target.value)}
-                      style={{ ...inputStyle, color: semester ? '#e0e0e0' : '#555', cursor: 'pointer' }}>
-                      <option value="">Choisir</option>
-                      <option value="S1">Semestre 1</option>
-                      <option value="S2">Semestre 2</option>
-                      <option value="S3">Semestre 3</option>
-                      <option value="S4">Semestre 4</option>
-                      <option value="S5">Semestre 5</option>
-                      <option value="S6">Semestre 6</option>
-                      <option value="S7">Semestre 7</option>
-                      <option value="S8">Semestre 8</option>
-                      <option value="S9">Semestre 9</option>
-                      <option value="S10">Semestre 10</option>
-                    </select>
-                  </div>
                 </div>
               </>
             )}
