@@ -1,13 +1,14 @@
 'use client'
-import { useState } from 'react'
+import { useState, Suspense } from 'react'
 import { createClient } from '@/lib/supabase'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 
-export default function LoginPage() {
+function LoginContent() {
+  const searchParams = useSearchParams()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [name, setName] = useState('')
-  const [isSignUp, setIsSignUp] = useState(false)
+  const [isSignUp, setIsSignUp] = useState(searchParams.get('signup') === 'true')
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const supabase = createClient()
@@ -32,70 +33,86 @@ export default function LoginPage() {
     setLoading(false)
   }
 
-  const input: React.CSSProperties = {
-    width: '100%',
-    background: '#0d0d0d',
-    border: '1px solid #2a2a2a',
-    borderRadius: 10,
-    padding: '11px 14px',
-    color: '#e0e0e0',
-    fontSize: 13,
-    outline: 'none',
-    marginBottom: 12,
-    boxSizing: 'border-box',
-    fontFamily: 'inherit'
-  }
-
   return (
-    <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20 }}>
-      <div style={{ width: '100%', maxWidth: 400, background: '#111', border: '1px solid #1e1e1e', borderRadius: 16, padding: 32 }}>
-        <div style={{ fontSize: 11, letterSpacing: 3, color: '#c8f04e', textTransform: 'uppercase', marginBottom: 8 }}>MonQCM</div>
-        <div style={{ fontSize: 24, fontWeight: 800, color: '#f0f0f0', marginBottom: 4 }}>
-          {isSignUp ? 'Créer un compte' : 'Connexion'}
+    <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px', fontFamily: "'DM Sans', sans-serif" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&display=swap');`}</style>
+      <div style={{ width: '100%', maxWidth: 400 }}>
+
+        {/* Logo */}
+        <div style={{ textAlign: 'center', marginBottom: 32 }}>
+          <div style={{ width: 44, height: 44, background: '#c8f04e', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, margin: '0 auto 12px' }}>☑</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: '#f0f0f0' }}>MonQCM</div>
+          <div style={{ fontSize: 12, color: '#555', marginTop: 4 }}>Faculté de Médecine · Oujda</div>
         </div>
-        <div style={{ fontSize: 13, color: '#555', marginBottom: 24 }}>
-          {isSignUp ? 'Rejoignez la plateforme' : 'Bon retour 👋'}
-        </div>
-        {isSignUp && (
-          <input
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder="Nom complet"
-            style={input}
-          />
-        )}
-        <input
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          placeholder="Email"
-          type="email"
-          style={input}
-        />
-        <input
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          placeholder="Mot de passe"
-          type="password"
-          style={input}
-        />
-        {error && (
-          <div style={{ color: '#f04e4e', fontSize: 12, marginBottom: 12 }}>{error}</div>
-        )}
-        <button
-          onClick={handleSubmit}
-          disabled={loading}
-          style={{ width: '100%', background: '#c8f04e', color: '#0a0a0a', border: 'none', borderRadius: 10, padding: '12px', fontSize: 14, fontWeight: 700, cursor: 'pointer', marginBottom: 16, fontFamily: 'inherit' }}>
-          {loading ? '...' : isSignUp ? "S'inscrire" : 'Se connecter'}
-        </button>
-        <div style={{ textAlign: 'center', fontSize: 12, color: '#555' }}>
-          {isSignUp ? 'Déjà un compte ?' : 'Pas encore de compte ?'}{' '}
-          <span
-            onClick={() => setIsSignUp(!isSignUp)}
-            style={{ color: '#c8f04e', cursor: 'pointer', fontWeight: 600 }}>
-            {isSignUp ? 'Se connecter' : "S'inscrire"}
-          </span>
+
+        {/* Card */}
+        <div style={{ background: '#111', border: '1px solid #1e1e1e', borderRadius: 18, padding: '28px 24px' }}>
+
+          {/* Toggle */}
+          <div style={{ display: 'flex', background: '#0d0d0d', borderRadius: 10, padding: 4, marginBottom: 24, gap: 4 }}>
+            {(['connexion', 'inscription'] as const).map((mode) => (
+              <button key={mode} onClick={() => setIsSignUp(mode === 'inscription')}
+                style={{ flex: 1, padding: '9px 4px', borderRadius: 8, fontSize: 12, fontWeight: 600, border: 'none', cursor: 'pointer', background: (mode === 'inscription') === isSignUp ? '#c8f04e' : 'transparent', color: (mode === 'inscription') === isSignUp ? '#0a0a0a' : '#666', fontFamily: 'inherit', transition: 'all 0.2s' }}>
+                {mode === 'connexion' ? '🔑 Connexion' : '✨ Inscription'}
+              </button>
+            ))}
+          </div>
+
+          {/* Fields */}
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 12, marginBottom: 20 }}>
+            {isSignUp && (
+              <div>
+                <label style={{ fontSize: 11, color: '#666', fontWeight: 600, display: 'block', marginBottom: 6 }}>Nom complet</label>
+                <input value={name} onChange={e => setName(e.target.value)} placeholder="Votre nom"
+                  style={{ width: '100%', background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: 10, padding: '11px 14px', color: '#e0e0e0', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+              </div>
+            )}
+            <div>
+              <label style={{ fontSize: 11, color: '#666', fontWeight: 600, display: 'block', marginBottom: 6 }}>Email</label>
+              <input value={email} onChange={e => setEmail(e.target.value)} placeholder="email@example.com" type="email"
+                style={{ width: '100%', background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: 10, padding: '11px 14px', color: '#e0e0e0', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+            </div>
+            <div>
+              <label style={{ fontSize: 11, color: '#666', fontWeight: 600, display: 'block', marginBottom: 6 }}>Mot de passe</label>
+              <input value={password} onChange={e => setPassword(e.target.value)} placeholder="••••••••" type="password"
+                style={{ width: '100%', background: '#0d0d0d', border: '1px solid #2a2a2a', borderRadius: 10, padding: '11px 14px', color: '#e0e0e0', fontSize: 13, outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit' }} />
+            </div>
+          </div>
+
+          {/* Error */}
+          {error && (
+            <div style={{ background: '#f04e4e11', border: '1px solid #f04e4e44', borderRadius: 8, padding: '10px 12px', fontSize: 12, color: '#f04e4e', marginBottom: 16 }}>
+              {error}
+            </div>
+          )}
+
+          {/* Submit */}
+          <button onClick={handleSubmit} disabled={loading}
+            style={{ width: '100%', background: '#c8f04e', color: '#0a0a0a', border: 'none', borderRadius: 10, padding: '13px', fontSize: 13, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, fontFamily: 'inherit' }}>
+            {loading ? 'Chargement...' : isSignUp ? 'Créer mon compte' : 'Se connecter'}
+          </button>
+
+          {/* Switch */}
+          <div style={{ textAlign: 'center', marginTop: 16, fontSize: 12, color: '#555' }}>
+            {isSignUp ? 'Déjà un compte ?' : 'Pas encore de compte ?'}{' '}
+            <button onClick={() => setIsSignUp(!isSignUp)} style={{ background: 'none', border: 'none', color: '#c8f04e', cursor: 'pointer', fontSize: 12, fontWeight: 600, padding: 0, fontFamily: 'inherit' }}>
+              {isSignUp ? 'Se connecter' : "S'inscrire"}
+            </button>
+          </div>
         </div>
       </div>
     </div>
+  )
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={
+      <div style={{ minHeight: '100vh', background: '#0a0a0a', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ color: '#c8f04e', fontSize: 13, fontWeight: 600 }}>Chargement...</div>
+      </div>
+    }>
+      <LoginContent />
+    </Suspense>
   )
 }

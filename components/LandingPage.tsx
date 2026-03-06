@@ -109,7 +109,7 @@ export default function LandingPage() {
       a: "Pour les QCMs à réponses multiples, si vous cochez 2 bonnes réponses sur 4, vous obtenez 50% du point. Pas de pénalité pour les bonnes réponses manquées, mais les mauvaises choix annulent.",
     },
     {
-      q: 'Puis-je utiliser MonQCM sur mobile ?',
+      q: 'Puis-je utiliser MedQCM sur mobile ?',
       a: "Absolument. La plateforme est conçue mobile-first. L'interface est optimisée pour réviser dans le transport, entre les cours, ou partout ailleurs.",
     },
     {
@@ -271,7 +271,7 @@ export default function LandingPage() {
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
           <div style={{ width: 28, height: 28, background: '#c8f04e', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 14 }}>☑</div>
-          <span style={{ fontSize: 16, fontWeight: 800, color: '#f0f0f0', letterSpacing: -0.5 }}>MonQCM</span>
+          <span style={{ fontSize: 16, fontWeight: 800, color: '#f0f0f0', letterSpacing: -0.5 }}>MedQCM</span>
         </div>
         <div className="nav-links" style={{ display: 'flex', gap: 32, alignItems: 'center' }}>
           <a className="nav-link" href="#features">Fonctionnalités</a>
@@ -282,7 +282,7 @@ export default function LandingPage() {
           <a href="/login" style={{ textDecoration: 'none' }}>
             <button className="btn-ghost" style={{ padding: '8px 18px', fontSize: 13 }}>Connexion</button>
           </a>
-          <a href="/login" style={{ textDecoration: 'none' }}>
+          <a href="/login?signup=true" style={{ textDecoration: 'none' }}>
             <button className="btn-primary" style={{ padding: '8px 18px', fontSize: 13 }}>Commencer</button>
           </a>
         </div>
@@ -332,7 +332,7 @@ export default function LandingPage() {
 
         {/* CTAs */}
         <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', justifyContent: 'center', animation: 'fadeUp 0.6s ease 0.3s both' }}>
-          <a href="/login" style={{ textDecoration: 'none' }}>
+          <a href="/login?signup=true" style={{ textDecoration: 'none' }}>
             <button className="btn-primary" style={{ padding: '14px 32px', fontSize: 15 }}>
               Commencer gratuitement →
             </button>
@@ -538,9 +538,9 @@ export default function LandingPage() {
             Prêt à passer au niveau supérieur ?
           </div>
           <p style={{ fontSize: 15, color: '#666', marginBottom: 32, lineHeight: 1.6 }}>
-            Rejoignez les étudiants qui révisent intelligemment avec MonQCM.
+            Rejoignez les étudiants qui révisent intelligemment avec MedQCM.
           </p>
-          <a href="/login" style={{ textDecoration: 'none' }}>
+          <a href="/login?signup=true" style={{ textDecoration: 'none' }}>
             <button className="btn-primary" style={{ padding: '14px 36px', fontSize: 15 }}>
               Commencer gratuitement →
             </button>
@@ -552,10 +552,10 @@ export default function LandingPage() {
       <footer style={{ borderTop: '1px solid #1a1a1a', padding: '32px 24px', textAlign: 'center' }}>
         <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, marginBottom: 12 }}>
           <div style={{ width: 22, height: 22, background: '#c8f04e', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11 }}>☑</div>
-          <span style={{ fontSize: 14, fontWeight: 800, color: '#f0f0f0' }}>MonQCM</span>
+          <span style={{ fontSize: 14, fontWeight: 800, color: '#f0f0f0' }}>MedQCM</span>
         </div>
         <div style={{ fontSize: 12, color: '#333' }}>
-          © 2025 MonQCM · Fait pour les étudiants en médecine marocains
+          © 2025 MedQCM · Fait pour les étudiants en médecine marocains
         </div>
       </footer>
     </div>
