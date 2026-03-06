@@ -266,7 +266,7 @@ function Quiz({ config, setPage }: { config: QuizConfig; setPage: (p: string) =>
         )}
       </div>
 
-      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 900, background: "#0d0d0d", borderTop: "1px solid #1a1a1a", padding: "10px 16px", display: "flex", gap: 10, justifyContent: "space-between", alignItems: "center", zIndex: 10 }}>
+      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 1100, background: "#0d0d0d", borderTop: "1px solid #1a1a1a", padding: "10px 16px", display: "flex", gap: 10, justifyContent: "space-between", alignItems: "center", zIndex: 10 }}>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={() => setFlagged((prev: Set<number>) => { const n = new Set(prev); n.has(idx) ? n.delete(idx) : n.add(idx); return n; })} style={{ background: flagged.has(idx) ? "#f4a82122" : "#111", border: `1px solid ${flagged.has(idx) ? "#f4a821" : "#2a2a2a"}`, borderRadius: 8, padding: "8px 10px", cursor: "pointer", color: flagged.has(idx) ? "#f4a821" : "#555" }}><Icon d={icons.flag} size={15} /></button>
           <button onClick={() => setBookmarked((prev: Set<number>) => { const n = new Set(prev); n.has(idx) ? n.delete(idx) : n.add(idx); return n; })} style={{ background: bookmarked.has(idx) ? "#4e80f022" : "#111", border: `1px solid ${bookmarked.has(idx) ? "#4e80f0" : "#2a2a2a"}`, borderRadius: 8, padding: "8px 10px", cursor: "pointer", color: bookmarked.has(idx) ? "#4e80f0" : "#555" }}><Icon d={icons.bookmark} size={15} /></button>
@@ -630,7 +630,7 @@ export default function App() {
   );
 
   return (
-    <div style={{ fontFamily: "'DM Sans', 'Segoe UI', sans-serif", background: "#0a0a0a", color: "#e0e0e0", minHeight: "100vh", maxWidth: 900, margin: "0 auto", position: "relative" }}>
+    <div style={{ fontFamily: "'DM Sans', 'Segoe UI', sans-serif", background: "#0a0a0a", color: "#e0e0e0", minHeight: "100vh", maxWidth: 1100, margin: "0 auto", position: "relative" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&family=Playfair+Display:wght@700;800;900&display=swap');
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -655,7 +655,7 @@ export default function App() {
       </div>
 
       {page !== "quiz" && (
-        <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 900, background: "#0d0d0d", borderTop: "1px solid #1a1a1a", display: "flex", zIndex: 100 }}>
+        <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 1100, background: "#0d0d0d", borderTop: "1px solid #1a1a1a", display: "flex", zIndex: 100 }}>
           {NAV.map((n) => (
             <button key={n.id} onClick={() => setPage(n.id)} style={{ flex: 1, padding: "10px 4px 12px", background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, position: "relative" }}>
               <div style={{ color: page === n.id ? "#c8f04e" : "#444" }}><Icon d={n.icon} size={20} /></div>
