@@ -309,7 +309,7 @@ export default function LandingPage() {
 
         {/* Title */}
         <h1 className="hero-title" style={{
-          fontSize: 64, fontWeight: 900, lineHeight: 1.05, letterSpacing: -2,
+          fontSize: 60, fontWeight: 900, lineHeight: 1.05, letterSpacing: -2,
           fontFamily: "'Playfair Display', serif",
           color: '#f0f0f0',
           maxWidth: 800,
@@ -318,7 +318,7 @@ export default function LandingPage() {
         }}>
           Révisez comme un{' '}
           <span style={{ color: '#c8f04e', fontStyle: 'italic' }}>champion</span>
-          {' '} and ACE your exams!
+          {' '} and <span style={{ color: '#c8f04e', fontStyle: 'italic' }}>ACE</span> your exams!
         </h1>
 
         {/* Subtitle */}
