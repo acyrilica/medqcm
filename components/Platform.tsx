@@ -4,28 +4,12 @@ import { createClient } from '@/lib/supabase';
 
 // ── TYPES ─────────────────────────────────────────────────────────────────────
 interface Question {
-  id: number;
-  question: string;
-  options: string[];
-  correct: number[];
-  explanation: string;
-  subject: string;
-  module: string;
-  year: number;
-  difficulty: string;
+  id: number; question: string; options: string[]; correct: number[];
+  explanation: string; subject: string; module: string; year: number; difficulty: string;
 }
+interface QuizConfig { questions: Question[]; mode: 'training' | 'exam'; }
+interface ScoreResult { status: 'correct' | 'partial' | 'wrong'; partialPct: number; }
 
-interface QuizConfig {
-  questions: Question[];
-  mode: 'training' | 'exam';
-}
-
-interface ScoreResult {
-  status: 'correct' | 'partial' | 'wrong';
-  partialPct: number;
-}
-
-// ── MOTIVATING QUOTES ─────────────────────────────────────────────────────────
 const quotes = [
   "La médecine, c'est l'art de guérir et la science de l'espoir. 🩺",
   "Chaque question résolue est un patient sauvé demain. 💪",
@@ -37,7 +21,6 @@ const quotes = [
   "Votre futur patient compte sur votre préparation. ❤️",
 ];
 
-// ── SCORING ───────────────────────────────────────────────────────────────────
 function scoreAnswer(correctArr: number[], selectedSet: Set<number>): ScoreResult {
   if (selectedSet.size === 0) return { status: "wrong", partialPct: 0 };
   const hits = [...selectedSet].filter(i => correctArr.includes(i)).length;
@@ -47,7 +30,6 @@ function scoreAnswer(correctArr: number[], selectedSet: Set<number>): ScoreResul
   return { status: "partial", partialPct: Math.round((hits / correctArr.length) * 100) };
 }
 
-// ── ICONS ─────────────────────────────────────────────────────────────────────
 function Icon({ d, size = 18 }: { d: string; size?: number }) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
@@ -67,15 +49,12 @@ const icons = {
   search: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z",
   logout: "M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4 M16 17l5-5-5-5 M21 12H9",
   user: "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2 M12 11a4 4 0 100-8 4 4 0 000 8z",
-  chevron: "M9 18l6-6-6-6",
 };
 
-// ── SHARED STYLES ─────────────────────────────────────────────────────────────
-const cardStyle: React.CSSProperties = { background: "#111", border: "1px solid #1e1e1e", borderRadius: 14, padding: "14px 16px" };
-const navBtnStyle: React.CSSProperties = { background: "#1a1a1a", border: "1px solid #2a2a2a", color: "#ccc", borderRadius: 10, padding: "10px 16px", fontSize: 12, cursor: "pointer", fontWeight: 600 };
+const cardStyle: React.CSSProperties = { background: "#111", border: "1px solid #1e1e1e", borderRadius: 14, padding: "20px" };
 
 function btnStyle(bg: string, color: string, borderColor?: string, small?: boolean): React.CSSProperties {
-  return { background: bg, color, border: borderColor ? `1.5px solid ${borderColor}` : "none", borderRadius: 10, padding: small ? "9px 18px" : "11px 20px", fontSize: small ? 12 : 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" };
+  return { background: bg, color, border: borderColor ? `1.5px solid ${borderColor}` : "none", borderRadius: 10, padding: small ? "9px 18px" : "12px 24px", fontSize: small ? 12 : 14, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" };
 }
 
 function tagStyle(color: string): React.CSSProperties {
@@ -83,12 +62,10 @@ function tagStyle(color: string): React.CSSProperties {
 }
 
 // ── OPTION BUTTON ─────────────────────────────────────────────────────────────
-interface OptionBtnProps {
+function OptionBtn({ label, text, selected, feedback, isCorrectOpt, isMulti, disabled, onToggle }: {
   label: string; text: string; selected: boolean; feedback: boolean;
   isCorrectOpt: boolean; isMulti: boolean; disabled: boolean; onToggle: () => void;
-}
-
-function OptionBtn({ label, text, selected, feedback, isCorrectOpt, isMulti, disabled, onToggle }: OptionBtnProps) {
+}) {
   let bg = "#111", border = "#252525", color = "#ccc", boxBg = "#1a1a1a", boxColor = "#555";
   if (feedback) {
     if (isCorrectOpt) { bg = "#c8f04e0e"; border = "#c8f04e"; color = "#d4f570"; boxBg = "#c8f04e"; boxColor = "#0a0a0a"; }
@@ -162,11 +139,10 @@ function Quiz({ config, setPage }: { config: QuizConfig; setPage: (p: string) =>
     });
     const pct = Math.round((totalScore / questions.length) * 100);
     const scoreColor = pct >= 75 ? "#c8f04e" : pct >= 50 ? "#f4a821" : "#f04e4e";
-
     return (
       <div style={{ padding: "24px 20px 60px", maxWidth: 700, margin: "0 auto" }}>
         <div style={{ textAlign: "center", marginBottom: 28 }}>
-          <div style={{ fontSize: 60, fontWeight: 900, color: scoreColor, fontFamily: "'Playfair Display', serif", lineHeight: 1 }}>{pct}%</div>
+          <div style={{ fontSize: 64, fontWeight: 900, color: scoreColor, fontFamily: "'Playfair Display', serif", lineHeight: 1 }}>{pct}%</div>
           <div style={{ fontSize: 13, color: "#666", marginTop: 6 }}>{totalScore.toFixed(1)} / {questions.length} points</div>
           <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 14 }}>
             {([
@@ -174,9 +150,9 @@ function Quiz({ config, setPage }: { config: QuizConfig; setPage: (p: string) =>
               { label: "Partielles", count: breakdown.filter((b: {res: ScoreResult}) => b.res.status === "partial").length, color: "#f4a821" },
               { label: "Fausses", count: breakdown.filter((b: {res: ScoreResult}) => b.res.status === "wrong").length, color: "#f04e4e" },
             ] as { label: string; count: number; color: string }[]).map((s, i) => (
-              <div key={i} style={{ textAlign: "center", padding: "8px 16px", background: `${s.color}11`, border: `1px solid ${s.color}33`, borderRadius: 10 }}>
-                <div style={{ fontSize: 20, fontWeight: 800, color: s.color }}>{s.count}</div>
-                <div style={{ fontSize: 10, color: "#666" }}>{s.label}</div>
+              <div key={i} style={{ textAlign: "center", padding: "10px 20px", background: `${s.color}11`, border: `1px solid ${s.color}33`, borderRadius: 10 }}>
+                <div style={{ fontSize: 22, fontWeight: 800, color: s.color }}>{s.count}</div>
+                <div style={{ fontSize: 11, color: "#666" }}>{s.label}</div>
               </div>
             ))}
           </div>
@@ -185,20 +161,20 @@ function Quiz({ config, setPage }: { config: QuizConfig; setPage: (p: string) =>
           <button onClick={() => setPage("home")} style={btnStyle("#1a1a1a", "#c8f04e", "#2a2a2a")}>← Accueil</button>
           <button onClick={() => { setSelections({}); setConfirmed(new Set()); setIdx(0); setPhase("question"); setTimeLeft(mode === "exam" ? questions.length * 90 : null); }} style={btnStyle("#c8f04e", "#0a0a0a")}>Recommencer</button>
         </div>
-        <div style={{ fontSize: 13, fontWeight: 700, color: "#e0e0e0", marginBottom: 14 }}>Révision détaillée</div>
+        <div style={{ fontSize: 14, fontWeight: 700, color: "#e0e0e0", marginBottom: 14 }}>Révision détaillée</div>
         {breakdown.map(({ q: q2, sel, res }: { q: Question; sel: Set<number>; res: ScoreResult }, i: number) => (
           <div key={i} style={{ ...cardStyle, marginBottom: 10, borderColor: res.status === "correct" ? "#c8f04e44" : res.status === "partial" ? "#f4a82144" : "#f04e4e44" }}>
             <div style={{ display: "flex", gap: 6, marginBottom: 8, alignItems: "center", flexWrap: "wrap" }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: res.status === "correct" ? "#c8f04e" : res.status === "partial" ? "#f4a821" : "#f04e4e" }}>
+              <span style={{ fontSize: 12, fontWeight: 700, color: res.status === "correct" ? "#c8f04e" : res.status === "partial" ? "#f4a821" : "#f04e4e" }}>
                 {res.status === "correct" ? "✓ Correcte" : res.status === "partial" ? `~ Partielle (${res.partialPct}%)` : "✗ Incorrecte"}
               </span>
               {q2.correct.length > 1 && <span style={tagStyle("#888")}>{q2.correct.length} réponses attendues</span>}
             </div>
-            <div style={{ fontSize: 12, color: "#ccc", marginBottom: 10, lineHeight: 1.55 }}>{q2.question}</div>
+            <div style={{ fontSize: 13, color: "#ccc", marginBottom: 10, lineHeight: 1.55 }}>{q2.question}</div>
             {q2.options.map((o: string, oi: number) => {
               const isC = q2.correct.includes(oi), isSel = sel.has(oi);
               return (
-                <div key={oi} style={{ fontSize: 11, padding: "5px 10px", borderRadius: 6, marginBottom: 3, background: isC ? "#c8f04e1a" : isSel ? "#f04e4e1a" : "transparent", color: isC ? "#c8f04e" : isSel ? "#f04e4e" : "#444", display: "flex", alignItems: "center", gap: 6 }}>
+                <div key={oi} style={{ fontSize: 12, padding: "6px 10px", borderRadius: 6, marginBottom: 3, background: isC ? "#c8f04e1a" : isSel ? "#f04e4e1a" : "transparent", color: isC ? "#c8f04e" : isSel ? "#f04e4e" : "#444", display: "flex", alignItems: "center", gap: 6 }}>
                   <span style={{ fontWeight: 700, flexShrink: 0 }}>{String.fromCharCode(65 + oi)}.</span>
                   <span style={{ flex: 1 }}>{o}</span>
                   {isC && <span style={{ fontSize: 9, background: "#c8f04e", color: "#0a0a0a", borderRadius: 3, padding: "1px 5px", fontWeight: 800 }}>✓</span>}
@@ -206,7 +182,7 @@ function Quiz({ config, setPage }: { config: QuizConfig; setPage: (p: string) =>
                 </div>
               );
             })}
-            {q2.explanation && <div style={{ fontSize: 11, color: "#888", marginTop: 10, padding: "10px 12px", background: "#0d0d0d", borderRadius: 8, lineHeight: 1.65 }}>💡 {q2.explanation}</div>}
+            {q2.explanation && <div style={{ fontSize: 12, color: "#888", marginTop: 10, padding: "10px 12px", background: "#0d0d0d", borderRadius: 8, lineHeight: 1.65 }}>💡 {q2.explanation}</div>}
           </div>
         ))}
       </div>
@@ -219,56 +195,56 @@ function Quiz({ config, setPage }: { config: QuizConfig; setPage: (p: string) =>
 
   return (
     <div style={{ display: "flex", flexDirection: "column", minHeight: "100vh" }}>
-      <div style={{ padding: "12px 16px", background: "#0d0d0d", borderBottom: "1px solid #1a1a1a", display: "flex", alignItems: "center", gap: 12, position: "sticky", top: 0, zIndex: 10 }}>
+      <div style={{ padding: "12px 20px", background: "#0d0d0d", borderBottom: "1px solid #1a1a1a", display: "flex", alignItems: "center", gap: 12, position: "sticky", top: 0, zIndex: 10 }}>
         <button onClick={() => setPage("home")} style={{ background: "none", border: "none", color: "#666", cursor: "pointer", padding: 0 }}><Icon d={icons.arrow_left} size={18} /></button>
         <div style={{ flex: 1 }}>
-          <div style={{ height: 4, background: "#1a1a1a", borderRadius: 4, overflow: "hidden" }}>
+          <div style={{ height: 5, background: "#1a1a1a", borderRadius: 4, overflow: "hidden" }}>
             <div style={{ width: `${((idx + 1) / questions.length) * 100}%`, height: "100%", background: "#c8f04e", borderRadius: 4, transition: "width 0.3s" }} />
           </div>
         </div>
-        <div style={{ fontSize: 11, color: "#666", flexShrink: 0 }}>{idx + 1} / {questions.length}</div>
+        <div style={{ fontSize: 12, color: "#666", flexShrink: 0 }}>{idx + 1} / {questions.length}</div>
         {mode === "exam" && timeLeft !== null && (
-          <div style={{ fontSize: 11, color: timeLeft < 60 ? "#f04e4e" : "#888", fontWeight: 700, display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
-            <Icon d={icons.clock} size={13} /> {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, "0")}
+          <div style={{ fontSize: 12, color: timeLeft < 60 ? "#f04e4e" : "#888", fontWeight: 700, display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+            <Icon d={icons.clock} size={14} /> {Math.floor(timeLeft / 60)}:{String(timeLeft % 60).padStart(2, "0")}
           </div>
         )}
       </div>
-      <div style={{ flex: 1, overflow: "auto", padding: "18px 16px 110px", maxWidth: 700, margin: "0 auto", width: "100%" }}>
-        <div style={{ display: "flex", gap: 6, marginBottom: 14, flexWrap: "wrap", alignItems: "center" }}>
+      <div style={{ flex: 1, overflow: "auto", padding: "20px", maxWidth: 720, margin: "0 auto", width: "100%", paddingBottom: 120 }}>
+        <div style={{ display: "flex", gap: 6, marginBottom: 16, flexWrap: "wrap", alignItems: "center" }}>
           {q.subject && <span style={tagStyle("#c8f04e")}>{q.subject}</span>}
           {q.module && <span style={tagStyle("#4e80f0")}>{q.module}</span>}
           {isMulti ? <span style={{ ...tagStyle("#f4a821"), fontWeight: 700 }}>☑ {q.correct.length} réponses correctes</span> : <span style={tagStyle("#555")}>◉ 1 réponse correcte</span>}
           {q.year > 0 && <span style={{ ...tagStyle("#333"), marginLeft: "auto" }}>{q.year}</span>}
         </div>
-        <div style={{ fontSize: 15, fontWeight: 600, color: "#f0f0f0", lineHeight: 1.65, marginBottom: 6, fontFamily: "'Playfair Display', serif" }}>{q.question}</div>
-        <div style={{ fontSize: 11, color: "#3a3a3a", marginBottom: 16 }}>{isMulti ? "Cochez toutes les réponses correctes" : "Sélectionnez une seule réponse"}</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
+        <div style={{ fontSize: 16, fontWeight: 600, color: "#f0f0f0", lineHeight: 1.7, marginBottom: 6, fontFamily: "'Playfair Display', serif" }}>{q.question}</div>
+        <div style={{ fontSize: 12, color: "#333", marginBottom: 18 }}>{isMulti ? "Cochez toutes les réponses correctes" : "Sélectionnez une seule réponse"}</div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 16 }}>
           {q.options.map((o: string, oi: number) => (
             <OptionBtn key={oi} label={String.fromCharCode(65 + oi)} text={o} selected={curSel.has(oi)} feedback={showFeedback} isCorrectOpt={q.correct.includes(oi)} isMulti={isMulti} disabled={showFeedback} onToggle={() => toggle(oi)} />
           ))}
         </div>
-        {isMulti && !isConfirmed && curSel.size > 0 && <div style={{ fontSize: 11, color: "#555", textAlign: "center", marginBottom: 10 }}>{curSel.size} sélectionnée{curSel.size > 1 ? "s" : ""} · {q.correct.length} attendue{q.correct.length > 1 ? "s" : ""}</div>}
+        {isMulti && !isConfirmed && curSel.size > 0 && <div style={{ fontSize: 12, color: "#555", textAlign: "center", marginBottom: 10 }}>{curSel.size} sélectionnée{curSel.size > 1 ? "s" : ""} · {q.correct.length} attendue{q.correct.length > 1 ? "s" : ""}</div>}
         {mode === "training" && !isConfirmed && (
           <button onClick={confirm} disabled={curSel.size === 0} style={{ ...btnStyle(curSel.size === 0 ? "#141414" : "#c8f04e", curSel.size === 0 ? "#333" : "#0a0a0a"), width: "100%", marginBottom: 12, opacity: curSel.size === 0 ? 0.5 : 1 }}>Valider ma réponse</button>
         )}
         {showFeedback && feedStatus && (
-          <div style={{ background: `${feedbackColor}0d`, border: `1px solid ${feedbackColor}44`, borderRadius: 12, padding: 14 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: feedbackColor, marginBottom: 6 }}>{feedbackLabel}</div>
-            {isMulti && <div style={{ fontSize: 11, color: "#666", marginBottom: 8 }}>Bonnes réponses : {q.correct.map((i: number) => String.fromCharCode(65 + i)).join(", ")}</div>}
-            {q.explanation && <div style={{ fontSize: 12, color: "#aaa", lineHeight: 1.65 }}>💡 {q.explanation}</div>}
+          <div style={{ background: `${feedbackColor}0d`, border: `1px solid ${feedbackColor}44`, borderRadius: 12, padding: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: feedbackColor, marginBottom: 6 }}>{feedbackLabel}</div>
+            {isMulti && <div style={{ fontSize: 12, color: "#666", marginBottom: 8 }}>Bonnes réponses : {q.correct.map((i: number) => String.fromCharCode(65 + i)).join(", ")}</div>}
+            {q.explanation && <div style={{ fontSize: 13, color: "#aaa", lineHeight: 1.65 }}>💡 {q.explanation}</div>}
           </div>
         )}
       </div>
-      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#0d0d0d", borderTop: "1px solid #1a1a1a", padding: "10px 16px", display: "flex", gap: 10, justifyContent: "space-between", alignItems: "center", zIndex: 10 }}>
+      <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#0d0d0d", borderTop: "1px solid #1a1a1a", padding: "12px 20px", display: "flex", gap: 10, justifyContent: "space-between", alignItems: "center", zIndex: 10 }}>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={() => setFlagged((prev: Set<number>) => { const n = new Set(prev); n.has(idx) ? n.delete(idx) : n.add(idx); return n; })} style={{ background: flagged.has(idx) ? "#f4a82122" : "#111", border: `1px solid ${flagged.has(idx) ? "#f4a821" : "#2a2a2a"}`, borderRadius: 8, padding: "8px 10px", cursor: "pointer", color: flagged.has(idx) ? "#f4a821" : "#555" }}><Icon d={icons.flag} size={15} /></button>
           <button onClick={() => setBookmarked((prev: Set<number>) => { const n = new Set(prev); n.has(idx) ? n.delete(idx) : n.add(idx); return n; })} style={{ background: bookmarked.has(idx) ? "#4e80f022" : "#111", border: `1px solid ${bookmarked.has(idx) ? "#4e80f0" : "#2a2a2a"}`, borderRadius: 8, padding: "8px 10px", cursor: "pointer", color: bookmarked.has(idx) ? "#4e80f0" : "#555" }}><Icon d={icons.bookmark} size={15} /></button>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          {idx > 0 && <button onClick={() => setIdx((i: number) => i - 1)} style={navBtnStyle}>← Préc.</button>}
+          {idx > 0 && <button onClick={() => setIdx((i: number) => i - 1)} style={{ background: "#1a1a1a", border: "1px solid #2a2a2a", color: "#ccc", borderRadius: 10, padding: "10px 18px", fontSize: 13, cursor: "pointer", fontWeight: 600 }}>← Préc.</button>}
           {idx < questions.length - 1
-            ? <button onClick={() => setIdx((i: number) => i + 1)} style={{ ...navBtnStyle, background: "#c8f04e", color: "#0a0a0a", border: "none", fontWeight: 700 }}>Suiv. →</button>
-            : <button onClick={goSubmit} style={{ ...navBtnStyle, background: "#c8f04e", color: "#0a0a0a", border: "none", fontWeight: 700 }}>Terminer ✓</button>}
+            ? <button onClick={() => setIdx((i: number) => i + 1)} style={{ background: "#c8f04e", color: "#0a0a0a", border: "none", borderRadius: 10, padding: "10px 18px", fontSize: 13, cursor: "pointer", fontWeight: 700 }}>Suiv. →</button>
+            : <button onClick={goSubmit} style={{ background: "#c8f04e", color: "#0a0a0a", border: "none", borderRadius: 10, padding: "10px 18px", fontSize: 13, cursor: "pointer", fontWeight: 700 }}>Terminer ✓</button>}
         </div>
       </div>
     </div>
@@ -282,41 +258,41 @@ function Dashboard({ questions, setPage, setQuizConfig }: { questions: Question[
 
   return (
     <div>
-      <div style={{ display: "flex", gap: 10, marginBottom: 24 }}>
-        <button onClick={() => start("training")} style={{ ...btnStyle("#c8f04e", "#0a0a0a"), flex: 1 }}>⚡ Entraînement</button>
-        <button onClick={() => start("exam")} style={{ ...btnStyle("transparent", "#c8f04e", "#c8f04e"), flex: 1 }}>🎯 Mode Examen</button>
+      <div style={{ marginBottom: 24 }}>
+        <div style={{ fontSize: 26, fontWeight: 800, color: "#f0f0f0", fontFamily: "'Playfair Display', serif" }}>Tableau de bord</div>
+        <div style={{ fontSize: 13, color: "#555", marginTop: 4 }}>Médecine · Faculté d&apos;Oujda</div>
       </div>
-
-      {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 24 }}>
+      <div style={{ display: "flex", gap: 12, marginBottom: 28, flexWrap: "wrap" }}>
+        <button onClick={() => start("training")} style={btnStyle("#c8f04e", "#0a0a0a")}>⚡ Entraînement</button>
+        <button onClick={() => start("exam")} style={btnStyle("transparent", "#c8f04e", "#c8f04e")}>🎯 Mode Examen</button>
+      </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 28 }}>
         {([
           { label: "Questions", value: questions.length, icon: "📋", color: "#c8f04e" },
           { label: "Matières", value: subjects.length, icon: "📚", color: "#4ecbf0" },
-          { label: "Multi-rép.", value: questions.filter((q: Question) => q.correct.length > 1).length, icon: "☑", color: "#f04e4e" },
+          { label: "Multi-réponses", value: questions.filter((q: Question) => q.correct.length > 1).length, icon: "☑", color: "#f04e4e" },
           { label: "Année récente", value: Math.max(0, ...questions.map((q: Question) => q.year || 0)) || "—", icon: "📅", color: "#b44ef0" },
         ] as { label: string; value: string | number; icon: string; color: string }[]).map((s, i) => (
-          <div key={i} style={cardStyle}>
-            <div style={{ fontSize: 20, marginBottom: 4 }}>{s.icon}</div>
-            <div style={{ fontSize: 32, fontWeight: 800, color: s.color }}>{s.value}</div>
-            <div style={{ fontSize: 13, color: "#666", marginTop: 4 }}>{s.label}</div>
+          <div key={i} style={{ ...cardStyle, padding: "24px" }}>
+            <div style={{ fontSize: 28, marginBottom: 10 }}>{s.icon}</div>
+            <div style={{ fontSize: 34, fontWeight: 800, color: s.color, lineHeight: 1 }}>{s.value}</div>
+            <div style={{ fontSize: 13, color: "#666", marginTop: 6 }}>{s.label}</div>
           </div>
         ))}
       </div>
-
-      {/* Subjects */}
       {subjects.length > 0 && (
         <div style={cardStyle}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#e0e0e0", marginBottom: 14 }}>Réviser par matière</div>
+          <div style={{ fontSize: 15, fontWeight: 700, color: "#e0e0e0", marginBottom: 16 }}>Réviser par matière</div>
           {subjects.map((s: string, i: number) => {
             const count = questions.filter((q: Question) => q.subject === s).length;
             return (
-              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: i < subjects.length - 1 ? "1px solid #1a1a1a" : "none" }}>
+              <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: i < subjects.length - 1 ? "1px solid #1a1a1a" : "none" }}>
                 <div>
-                  <div style={{ fontSize: 13, color: "#ccc", fontWeight: 600 }}>{s}</div>
-                  <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>{count} question{count > 1 ? "s" : ""}</div>
+                  <div style={{ fontSize: 14, color: "#ccc", fontWeight: 600 }}>{s}</div>
+                  <div style={{ fontSize: 12, color: "#555", marginTop: 3 }}>{count} question{count > 1 ? "s" : ""}</div>
                 </div>
                 <button onClick={() => start("training", questions.filter((q: Question) => q.subject === s))}
-                  style={{ fontSize: 11, background: "#c8f04e22", color: "#c8f04e", border: "1px solid #c8f04e44", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
+                  style={{ fontSize: 12, background: "#c8f04e22", color: "#c8f04e", border: "1px solid #c8f04e44", borderRadius: 8, padding: "7px 14px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
                   Pratiquer
                 </button>
               </div>
@@ -333,50 +309,41 @@ function QuizList({ questions, setPage, setQuizConfig }: { questions: Question[]
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
   const subjects = [...new Set(questions.map((q: Question) => q.subject).filter(Boolean))];
-  const filtered = questions.filter((q: Question) =>
-    (filter === "all" || q.subject === filter) && q.question.toLowerCase().includes(search.toLowerCase())
-  );
+  const filtered = questions.filter((q: Question) => (filter === "all" || q.subject === filter) && q.question.toLowerCase().includes(search.toLowerCase()));
   const startQuiz = (mode: 'training' | 'exam') => { if (filtered.length === 0) return; setQuizConfig({ questions: filtered, mode }); setPage("quiz"); };
 
   return (
     <div>
-      <div style={{ fontSize: 18, fontWeight: 800, color: "#f0f0f0", fontFamily: "'Playfair Display', serif", marginBottom: 16 }}>Bibliothèque QCM</div>
+      <div style={{ fontSize: 26, fontWeight: 800, color: "#f0f0f0", fontFamily: "'Playfair Display', serif", marginBottom: 20 }}>Bibliothèque QCM</div>
       <div style={{ position: "relative", marginBottom: 12 }}>
-        <div style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#555" }}><Icon d={icons.search} size={15} /></div>
+        <div style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#555" }}><Icon d={icons.search} size={16} /></div>
         <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher une question..."
-          style={{ width: "100%", background: "#111", border: "1px solid #2a2a2a", borderRadius: 10, padding: "10px 12px 10px 36px", color: "#e0e0e0", fontSize: 13, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
+          style={{ width: "100%", background: "#111", border: "1px solid #2a2a2a", borderRadius: 10, padding: "11px 12px 11px 38px", color: "#e0e0e0", fontSize: 14, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
       </div>
       <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8, marginBottom: 16 }}>
         {["all", ...subjects].map((s: string) => (
-          <button key={s} onClick={() => setFilter(s)} style={{ flexShrink: 0, padding: "6px 14px", borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: "pointer", background: filter === s ? "#c8f04e" : "#1a1a1a", color: filter === s ? "#0a0a0a" : "#888", border: "none", fontFamily: "inherit" }}>
+          <button key={s} onClick={() => setFilter(s)} style={{ flexShrink: 0, padding: "7px 16px", borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: "pointer", background: filter === s ? "#c8f04e" : "#1a1a1a", color: filter === s ? "#0a0a0a" : "#888", border: "none", fontFamily: "inherit" }}>
             {s === "all" ? `Tout (${questions.length})` : s}
           </button>
         ))}
       </div>
-      <div style={{ display: "flex", gap: 10, marginBottom: 16 }}>
+      <div style={{ display: "flex", gap: 10, marginBottom: 20 }}>
         <button onClick={() => startQuiz("training")} style={btnStyle("#c8f04e", "#0a0a0a", undefined, true)}>⚡ Entraînement ({filtered.length})</button>
         <button onClick={() => startQuiz("exam")} style={btnStyle("#1a1a1a", "#c8f04e", "#c8f04e", true)}>🎯 Examen</button>
       </div>
-      {filtered.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "60px 20px", color: "#333" }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>🔍</div>
-          <div style={{ fontSize: 13 }}>Aucune question trouvée</div>
-        </div>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {filtered.map((q: Question) => (
-            <div key={q.id} style={{ ...cardStyle, cursor: "pointer" }} onClick={() => { setQuizConfig({ questions: [q], mode: "training" }); setPage("quiz"); }}>
-              <div style={{ display: "flex", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
-                {q.subject && <span style={tagStyle("#c8f04e")}>{q.subject}</span>}
-                <span style={tagStyle(q.difficulty === "easy" ? "#4ef0a0" : q.difficulty === "medium" ? "#f4a821" : "#f04e4e")}>{q.difficulty}</span>
-                {q.correct.length > 1 && <span style={tagStyle("#f4a821")}>☑ {q.correct.length} rép.</span>}
-                {q.year > 0 && <span style={{ marginLeft: "auto", fontSize: 10, color: "#444" }}>{q.year}</span>}
-              </div>
-              <div style={{ fontSize: 13, color: "#ccc", lineHeight: 1.5 }}>{q.question}</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        {filtered.map((q: Question) => (
+          <div key={q.id} style={{ ...cardStyle, cursor: "pointer" }} onClick={() => { setQuizConfig({ questions: [q], mode: "training" }); setPage("quiz"); }}>
+            <div style={{ display: "flex", gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+              {q.subject && <span style={tagStyle("#c8f04e")}>{q.subject}</span>}
+              <span style={tagStyle(q.difficulty === "easy" ? "#4ef0a0" : q.difficulty === "medium" ? "#f4a821" : "#f04e4e")}>{q.difficulty}</span>
+              {q.correct.length > 1 && <span style={tagStyle("#f4a821")}>☑ {q.correct.length} rép.</span>}
+              {q.year > 0 && <span style={{ marginLeft: "auto", fontSize: 11, color: "#444" }}>{q.year}</span>}
             </div>
-          ))}
-        </div>
-      )}
+            <div style={{ fontSize: 14, color: "#ccc", lineHeight: 1.55 }}>{q.question}</div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -390,32 +357,32 @@ function Bookmarks({ questions, setPage, setQuizConfig }: { questions: Question[
 
   return (
     <div>
-      <div style={{ fontSize: 18, fontWeight: 800, color: "#f0f0f0", fontFamily: "'Playfair Display', serif", marginBottom: 20 }}>Cahier de révision</div>
-      <div style={{ display: "flex", background: "#111", borderRadius: 10, padding: 4, marginBottom: 20, gap: 4 }}>
+      <div style={{ fontSize: 26, fontWeight: 800, color: "#f0f0f0", fontFamily: "'Playfair Display', serif", marginBottom: 20 }}>Cahier de révision</div>
+      <div style={{ display: "flex", background: "#111", borderRadius: 10, padding: 4, marginBottom: 24, gap: 4, maxWidth: 320 }}>
         {([['bookmarks', '📌 Favoris'], ['mistakes', '❌ Erreurs']] as [string, string][]).map(([id, label]) => (
           <button key={id} onClick={() => setTab(id as 'bookmarks' | 'mistakes')}
-            style={{ flex: 1, padding: "9px 4px", borderRadius: 8, fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", background: tab === id ? "#c8f04e" : "transparent", color: tab === id ? "#0a0a0a" : "#666", fontFamily: "inherit" }}>
+            style={{ flex: 1, padding: "9px 8px", borderRadius: 8, fontSize: 13, fontWeight: 600, border: "none", cursor: "pointer", background: tab === id ? "#c8f04e" : "transparent", color: tab === id ? "#0a0a0a" : "#666", fontFamily: "inherit" }}>
             {label}
           </button>
         ))}
       </div>
       {current.length === 0 ? (
-        <div style={{ textAlign: "center", padding: "60px 20px" }}>
-          <div style={{ fontSize: 32, marginBottom: 12 }}>{tab === 'bookmarks' ? '📌' : '❌'}</div>
-          <div style={{ fontSize: 13, color: "#555" }}>{tab === 'bookmarks' ? "Aucun favori pour l'instant" : "Aucune erreur enregistrée"}</div>
+        <div style={{ textAlign: "center", padding: "80px 20px" }}>
+          <div style={{ fontSize: 40, marginBottom: 12 }}>{tab === 'bookmarks' ? '📌' : '❌'}</div>
+          <div style={{ fontSize: 14, color: "#555" }}>{tab === 'bookmarks' ? "Aucun favori pour l'instant" : "Aucune erreur enregistrée"}</div>
         </div>
       ) : (
         <>
           {current.map((q: Question) => (
-            <div key={q.id} style={{ ...cardStyle, marginBottom: 8, cursor: "pointer" }} onClick={() => { setQuizConfig({ questions: [q], mode: "training" }); setPage("quiz"); }}>
-              <div style={{ display: "flex", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
+            <div key={q.id} style={{ ...cardStyle, marginBottom: 10, cursor: "pointer" }} onClick={() => { setQuizConfig({ questions: [q], mode: "training" }); setPage("quiz"); }}>
+              <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
                 {q.subject && <span style={tagStyle(tab === 'mistakes' ? "#f04e4e" : "#4e80f0")}>{q.subject}</span>}
               </div>
-              <div style={{ fontSize: 12, color: "#ccc", lineHeight: 1.5 }}>{q.question}</div>
+              <div style={{ fontSize: 14, color: "#ccc", lineHeight: 1.55 }}>{q.question}</div>
             </div>
           ))}
           <button onClick={() => { setQuizConfig({ questions: current, mode: "training" }); setPage("quiz"); }}
-            style={{ ...btnStyle("#c8f04e22", "#c8f04e", "#c8f04e"), width: "100%", marginTop: 8 }}>
+            style={{ ...btnStyle("#c8f04e22", "#c8f04e", "#c8f04e"), marginTop: 8 }}>
             🔁 Réviser ({current.length})
           </button>
         </>
@@ -436,13 +403,11 @@ function Admin({ questions }: { questions: Question[] }) {
 
   const parseCSV = () => {
     const lines = csvText.trim().split("\n").filter(Boolean);
-    const result: Question[] = lines.map((line: string, idx: number) => {
+    setParsed(lines.map((line: string, idx: number) => {
       const parts = line.split(",");
-      const rawCorrect = parts[6] || "1";
-      const correctArr = rawCorrect.split(";").map((n: string) => parseInt(n.trim()) - 1).filter((n: number) => !isNaN(n));
+      const correctArr = (parts[6] || "1").split(";").map((n: string) => parseInt(n.trim()) - 1).filter((n: number) => !isNaN(n));
       return { id: idx, question: parts[0], options: parts.slice(1, 6).filter(Boolean), correct: correctArr, explanation: parts[7] || "", subject: parts[8] || "", module: parts[9] || "", year: parseInt(parts[10]) || 2024, difficulty: "medium" };
-    });
-    setParsed(result);
+    }));
   };
 
   const importQuestions = async () => {
@@ -456,76 +421,76 @@ function Admin({ questions }: { questions: Question[] }) {
 
   return (
     <div>
-      <div style={{ fontSize: 18, fontWeight: 800, color: "#f0f0f0", fontFamily: "'Playfair Display', serif", marginBottom: 4 }}>Panneau Admin</div>
-      <div style={{ fontSize: 12, color: "#555", marginBottom: 20 }}>{questions.length} questions au total</div>
-      <div style={{ display: "flex", background: "#111", borderRadius: 10, padding: 4, marginBottom: 20, gap: 4 }}>
+      <div style={{ fontSize: 26, fontWeight: 800, color: "#f0f0f0", fontFamily: "'Playfair Display', serif", marginBottom: 4 }}>Panneau Admin</div>
+      <div style={{ fontSize: 13, color: "#555", marginBottom: 24 }}>{questions.length} questions au total</div>
+      <div style={{ display: "flex", background: "#111", borderRadius: 10, padding: 4, marginBottom: 24, gap: 4, maxWidth: 400 }}>
         {([["questions", "📋 Questions"], ["upload", "⬆ Import CSV"], ["stats", "📊 Stats"]] as [string, string][]).map(([id, label]) => (
-          <button key={id} onClick={() => setTab(id)} style={{ flex: 1, padding: "8px 4px", borderRadius: 8, fontSize: 11, fontWeight: 600, border: "none", cursor: "pointer", background: tab === id ? "#c8f04e" : "transparent", color: tab === id ? "#0a0a0a" : "#666", fontFamily: "inherit" }}>{label}</button>
+          <button key={id} onClick={() => setTab(id)} style={{ flex: 1, padding: "9px 4px", borderRadius: 8, fontSize: 12, fontWeight: 600, border: "none", cursor: "pointer", background: tab === id ? "#c8f04e" : "transparent", color: tab === id ? "#0a0a0a" : "#666", fontFamily: "inherit" }}>{label}</button>
         ))}
       </div>
       {tab === "questions" && (
         <div>
-          <div style={{ position: "relative", marginBottom: 14 }}>
-            <div style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#555" }}><Icon d={icons.search} size={14} /></div>
+          <div style={{ position: "relative", marginBottom: 16 }}>
+            <div style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#555" }}><Icon d={icons.search} size={15} /></div>
             <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher..."
-              style={{ width: "100%", background: "#111", border: "1px solid #2a2a2a", borderRadius: 8, padding: "9px 10px 9px 32px", color: "#ccc", fontSize: 12, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
+              style={{ width: "100%", background: "#111", border: "1px solid #2a2a2a", borderRadius: 10, padding: "10px 12px 10px 36px", color: "#ccc", fontSize: 13, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
           </div>
           {filtered.slice(0, 20).map((q: Question, i: number) => (
-            <div key={i} style={{ ...cardStyle, marginBottom: 8 }}>
-              <div style={{ display: "flex", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
+            <div key={i} style={{ ...cardStyle, marginBottom: 10 }}>
+              <div style={{ display: "flex", gap: 6, marginBottom: 8, flexWrap: "wrap" }}>
                 {q.subject && <span style={tagStyle("#c8f04e")}>{q.subject}</span>}
                 {q.year > 0 && <span style={tagStyle("#4e80f0")}>{q.year}</span>}
                 {q.correct.length > 1 && <span style={tagStyle("#f4a821")}>☑ {q.correct.length} rép.</span>}
               </div>
-              <div style={{ fontSize: 12, color: "#ccc" }}>{q.question}</div>
+              <div style={{ fontSize: 13, color: "#ccc" }}>{q.question}</div>
             </div>
           ))}
-          {filtered.length > 20 && <div style={{ textAlign: "center", fontSize: 11, color: "#555", marginTop: 8 }}>+{filtered.length - 20} autres</div>}
+          {filtered.length > 20 && <div style={{ textAlign: "center", fontSize: 12, color: "#555", marginTop: 10 }}>+{filtered.length - 20} autres questions</div>}
         </div>
       )}
       {tab === "upload" && (
-        <div>
-          <div style={{ ...cardStyle, marginBottom: 14 }}>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#c8f04e", marginBottom: 8 }}>Format CSV</div>
-            <div style={{ fontSize: 10, color: "#666", fontFamily: "monospace", background: "#0d0d0d", padding: 10, borderRadius: 6, lineHeight: 2 }}>
+        <div style={{ maxWidth: 600 }}>
+          <div style={{ ...cardStyle, marginBottom: 16 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color: "#c8f04e", marginBottom: 8 }}>Format CSV</div>
+            <div style={{ fontSize: 11, color: "#666", fontFamily: "monospace", background: "#0d0d0d", padding: 12, borderRadius: 8, lineHeight: 2 }}>
               question,opt1,opt2,opt3,opt4,opt5,<span style={{ color: "#f4a821" }}>correct</span>,explication,matière,module,année<br />
               1 réponse: <span style={{ color: "#c8f04e" }}>3</span> · Multi: <span style={{ color: "#f4a821" }}>1;3;4</span>
             </div>
           </div>
           <textarea value={csvText} onChange={(e) => { setCsvText(e.target.value); setImported(false); setParsed([]); }}
             placeholder="Question,OptionA,OptionB,OptionC,OptionD,OptionE,1;3,Explication,Matière,Module,2023"
-            style={{ width: "100%", background: "#111", border: "1px solid #2a2a2a", borderRadius: 10, padding: 12, color: "#ccc", fontSize: 11, fontFamily: "monospace", minHeight: 100, outline: "none", resize: "vertical", boxSizing: "border-box", marginBottom: 10 }} />
-          <button onClick={parseCSV} style={{ ...btnStyle("#c8f04e", "#0a0a0a"), width: "100%", marginBottom: 10 }}>Analyser le CSV</button>
+            style={{ width: "100%", background: "#111", border: "1px solid #2a2a2a", borderRadius: 10, padding: 14, color: "#ccc", fontSize: 12, fontFamily: "monospace", minHeight: 120, outline: "none", resize: "vertical", boxSizing: "border-box", marginBottom: 12 }} />
+          <button onClick={parseCSV} style={{ ...btnStyle("#c8f04e", "#0a0a0a"), width: "100%", marginBottom: 12 }}>Analyser le CSV</button>
           {parsed.length > 0 && !imported && (
             <div>
-              <div style={{ fontSize: 12, color: "#888", marginBottom: 10 }}>{parsed.length} question(s) détectée(s)</div>
+              <div style={{ fontSize: 13, color: "#888", marginBottom: 12 }}>{parsed.length} question(s) détectée(s)</div>
               {parsed.map((p: Question, i: number) => (
-                <div key={i} style={{ ...cardStyle, marginBottom: 6, borderColor: "#c8f04e33" }}>
-                  <div style={{ fontSize: 11, color: "#c8f04e", fontWeight: 700, marginBottom: 4 }}>Q{i + 1} · {p.subject || "N/A"}</div>
-                  <div style={{ fontSize: 12, color: "#ccc", marginBottom: 4 }}>{p.question}</div>
-                  <div style={{ fontSize: 10, color: "#555" }}>Réponses : {p.correct.map((c: number) => String.fromCharCode(65 + c)).join(", ")}</div>
+                <div key={i} style={{ ...cardStyle, marginBottom: 8, borderColor: "#c8f04e33" }}>
+                  <div style={{ fontSize: 12, color: "#c8f04e", fontWeight: 700, marginBottom: 4 }}>Q{i + 1} · {p.subject || "N/A"}</div>
+                  <div style={{ fontSize: 13, color: "#ccc", marginBottom: 4 }}>{p.question}</div>
+                  <div style={{ fontSize: 11, color: "#555" }}>Réponses : {p.correct.map((c: number) => String.fromCharCode(65 + c)).join(", ")}</div>
                 </div>
               ))}
-              <button onClick={importQuestions} disabled={importing} style={{ ...btnStyle("#c8f04e", "#0a0a0a"), width: "100%", marginTop: 8 }}>
+              <button onClick={importQuestions} disabled={importing} style={{ ...btnStyle("#c8f04e", "#0a0a0a"), width: "100%", marginTop: 10 }}>
                 {importing ? 'Import en cours...' : `✓ Importer ${parsed.length} question${parsed.length > 1 ? "s" : ""}`}
               </button>
             </div>
           )}
-          {imported && <div style={{ background: "#c8f04e22", border: "1px solid #c8f04e55", borderRadius: 10, padding: 14, textAlign: "center", color: "#c8f04e", fontSize: 13, fontWeight: 700 }}>✓ Import réussi !</div>}
+          {imported && <div style={{ background: "#c8f04e22", border: "1px solid #c8f04e55", borderRadius: 10, padding: 16, textAlign: "center", color: "#c8f04e", fontSize: 14, fontWeight: 700 }}>✓ Import réussi !</div>}
         </div>
       )}
       {tab === "stats" && (
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14 }}>
           {([
             { label: "Total", value: questions.length.toString(), icon: "📋" },
             { label: "Matières", value: [...new Set(questions.map((q: Question) => q.subject))].length.toString(), icon: "📚" },
             { label: "Multi-rép.", value: questions.filter((q: Question) => q.correct.length > 1).length.toString(), icon: "☑" },
             { label: "Année récente", value: (Math.max(0, ...questions.map((q: Question) => q.year || 0)) || "—").toString(), icon: "📅" },
           ] as { label: string; value: string; icon: string }[]).map((s, i) => (
-            <div key={i} style={cardStyle}>
-              <div style={{ fontSize: 28, marginBottom: 8 }}>{s.icon}</div>
-              <div style={{ fontSize: 20, fontWeight: 800, color: "#c8f04e" }}>{s.value}</div>
-              <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>{s.label}</div>
+            <div key={i} style={{ ...cardStyle, padding: "24px" }}>
+              <div style={{ fontSize: 28, marginBottom: 10 }}>{s.icon}</div>
+              <div style={{ fontSize: 34, fontWeight: 800, color: "#c8f04e" }}>{s.value}</div>
+              <div style={{ fontSize: 13, color: "#555", marginTop: 6 }}>{s.label}</div>
             </div>
           ))}
         </div>
@@ -543,32 +508,29 @@ export default function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [userName, setUserName] = useState("");
   const [userYear, setUserYear] = useState("");
+  const [isDesktop, setIsDesktop] = useState(false);
   const supabase = createClient();
-
   const quote = quotes[new Date().getDay() % quotes.length];
+
+  useEffect(() => {
+    const check = () => setIsDesktop(window.innerWidth >= 768);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   useEffect(() => {
     const loadData = async () => {
       try {
-        const { data: qData } = await supabase
-          .from('questions')
-          .select(`*, options (*), subjects (name), modules (name)`)
-          .order('created_at', { ascending: false });
-
+        const { data: qData } = await supabase.from('questions').select(`*, options (*), subjects (name), modules (name)`).order('created_at', { ascending: false });
         if (qData) {
           setQuestions(qData.map((q: any) => ({
-            id: q.id,
-            question: q.question_text,
+            id: q.id, question: q.question_text,
             options: (q.options || []).sort((a: any, b: any) => a.display_order - b.display_order).map((o: any) => o.option_text),
             correct: (q.options || []).map((o: any, i: number) => ({ i, is_correct: o.is_correct })).filter((o: any) => o.is_correct).map((o: any) => o.i),
-            explanation: q.explanation || '',
-            subject: q.subjects?.name || '',
-            module: q.modules?.name || '',
-            year: q.year || 0,
-            difficulty: q.difficulty || 'medium',
+            explanation: q.explanation || '', subject: q.subjects?.name || '', module: q.modules?.name || '', year: q.year || 0, difficulty: q.difficulty || 'medium',
           })));
         }
-
         const { data: userData } = await supabase.auth.getUser();
         if (userData.user) {
           const meta = userData.user.user_metadata;
@@ -592,151 +554,124 @@ export default function App() {
     ...(isAdmin ? [{ id: "admin", icon: icons.admin, label: "Admin" }] : []),
   ];
 
+  const pageContent = (
+    <>
+      {page === "home" && <Dashboard questions={questions} setPage={setPage} setQuizConfig={setQuizConfig} />}
+      {page === "quizlist" && <QuizList questions={questions} setPage={setPage} setQuizConfig={setQuizConfig} />}
+      {page === "bookmarks" && <Bookmarks questions={questions} setPage={setPage} setQuizConfig={setQuizConfig} />}
+      {page === "admin" && <Admin questions={questions} />}
+    </>
+  );
+
   if (loading) return (
-    <div style={{ minHeight: "100vh", background: "#0a0a0a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
-      <div style={{ width: 36, height: 36, background: "#c8f04e", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>☑</div>
-      <div style={{ color: "#c8f04e", fontSize: 13, fontWeight: 600 }}>Chargement...</div>
+    <div style={{ minHeight: "100vh", background: "#0a0a0a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 14 }}>
+      <div style={{ width: 40, height: 40, background: "#c8f04e", borderRadius: 10, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 20 }}>☑</div>
+      <div style={{ color: "#c8f04e", fontSize: 14, fontWeight: 600 }}>Chargement...</div>
     </div>
   );
 
   if (page === "quiz" && quizConfig) return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", background: "#0a0a0a", color: "#e0e0e0", minHeight: "100vh" }}>
-      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&family=Playfair+Display:wght@700;800;900&display=swap'); * { box-sizing: border-box; }`}</style>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&family=Playfair+Display:wght@700;800;900&display=swap'); * { box-sizing: border-box; } button,input,textarea,select { font-family: inherit; }`}</style>
       <Quiz config={quizConfig} setPage={setPage} />
     </div>
   );
 
   return (
-    <div style={{ fontFamily: "'DM Sans', sans-serif", background: "#0a0a0a", color: "#e0e0e0", minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&family=Playfair+Display:wght@700;800;900&display=swap');
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-track { background: #0a0a0a; } ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; }
-        button, input, textarea, select { font-family: inherit; }
-        @media (min-width: 768px) { .mobile-bottom-nav { display: none !important; } .desktop-sidebar { display: flex !important; } .desktop-topbar { display: flex !important; } }
-        @media (max-width: 767px) { .desktop-sidebar { display: none !important; } .desktop-topbar { display: none !important; } }
-      `}</style>
+    <div style={{ fontFamily: "'DM Sans', sans-serif", background: "#0a0a0a", color: "#e0e0e0", minHeight: "100vh" }}>
+      <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&family=Playfair+Display:wght@700;800;900&display=swap'); * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; } ::-webkit-scrollbar { width: 4px; } ::-webkit-scrollbar-thumb { background: #2a2a2a; border-radius: 2px; } button,input,textarea,select { font-family: inherit; }`}</style>
 
-      {/* ── DESKTOP LAYOUT ── */}
-      <div style={{ display: "flex", flex: 1, minHeight: "100vh" }}>
-
-        {/* Sidebar */}
-        <div className="desktop-sidebar" style={{ display: "none", flexDirection: "column", width: 240, background: "#0d0d0d", borderRight: "1px solid #1a1a1a", position: "fixed", top: 0, left: 0, height: "100vh", zIndex: 20, padding: "0 0 20px" }}>
-          {/* Logo */}
-          <div style={{ padding: "20px 20px 16px", borderBottom: "1px solid #1a1a1a" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <div style={{ width: 34, height: 34, background: "#c8f04e", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, flexShrink: 0 }}>☑</div>
-              <div>
-                <div style={{ fontSize: 15, fontWeight: 800, color: "#f0f0f0", lineHeight: 1 }}>MonQCM</div>
-                <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>Faculté · Oujda</div>
+      {isDesktop ? (
+        /* ── DESKTOP ── */
+        <div style={{ display: "flex", minHeight: "100vh" }}>
+          {/* Sidebar */}
+          <div style={{ width: 240, background: "#0d0d0d", borderRight: "1px solid #1a1a1a", position: "fixed", top: 0, left: 0, height: "100vh", display: "flex", flexDirection: "column", zIndex: 20 }}>
+            <div style={{ padding: "20px 16px 16px", borderBottom: "1px solid #1a1a1a" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 36, height: 36, background: "#c8f04e", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>☑</div>
+                <div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: "#f0f0f0" }}>MonQCM</div>
+                  <div style={{ fontSize: 10, color: "#555" }}>Faculté · Oujda</div>
+                </div>
               </div>
+            </div>
+            <div style={{ flex: 1, padding: "16px 10px", overflowY: "auto" }}>
+              <div style={{ fontSize: 9, letterSpacing: 2, color: "#333", fontWeight: 700, textTransform: "uppercase", padding: "0 10px 10px" }}>Navigation</div>
+              {NAV.map(n => (
+                <button key={n.id} onClick={() => setPage(n.id)}
+                  style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "11px 12px", borderRadius: 10, border: "none", cursor: "pointer", background: page === n.id ? "#c8f04e14" : "transparent", color: page === n.id ? "#c8f04e" : "#666", fontWeight: page === n.id ? 700 : 500, fontSize: 14, marginBottom: 2, textAlign: "left" }}>
+                  <div style={{ width: 3, height: 20, borderRadius: 2, background: page === n.id ? "#c8f04e" : "transparent", flexShrink: 0 }} />
+                  <Icon d={n.icon} size={17} />
+                  {n.label}
+                </button>
+              ))}
+            </div>
+            <div style={{ padding: "12px 10px", borderTop: "1px solid #1a1a1a" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "#111", borderRadius: 10, marginBottom: 8 }}>
+                <div style={{ width: 32, height: 32, background: "#c8f04e22", border: "1px solid #c8f04e44", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <Icon d={icons.user} size={15} />
+                </div>
+                <div style={{ flex: 1, overflow: "hidden" }}>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#e0e0e0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{userName}</div>
+                  {userYear && <div style={{ fontSize: 11, color: "#555" }}>{userYear}</div>}
+                </div>
+              </div>
+              <button onClick={handleLogout}
+                style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "9px 12px", borderRadius: 10, border: "none", cursor: "pointer", background: "transparent", color: "#444", fontSize: 13 }}>
+                <Icon d={icons.logout} size={15} /> Déconnexion
+              </button>
             </div>
           </div>
 
-          {/* Nav items */}
-          <div style={{ flex: 1, padding: "12px 10px", overflowY: "auto" }}>
-            <div style={{ fontSize: 9, letterSpacing: 2, color: "#333", fontWeight: 700, textTransform: "uppercase", padding: "4px 10px 8px" }}>Navigation</div>
-            {NAV.map(n => (
-              <button key={n.id} onClick={() => setPage(n.id)}
-                style={{ display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "10px 12px", borderRadius: 10, border: "none", cursor: "pointer", background: page === n.id ? "#c8f04e14" : "transparent", color: page === n.id ? "#c8f04e" : "#666", fontWeight: page === n.id ? 700 : 500, fontSize: 13, marginBottom: 2, textAlign: "left", transition: "all 0.15s" }}
-                onMouseEnter={e => { if (page !== n.id) e.currentTarget.style.background = "#ffffff08"; }}
-                onMouseLeave={e => { if (page !== n.id) e.currentTarget.style.background = "transparent"; }}>
-                <div style={{ width: 3, height: 20, borderRadius: 2, background: page === n.id ? "#c8f04e" : "transparent", flexShrink: 0 }} />
-                <Icon d={n.icon} size={17} />
-                {n.label}
+          {/* Main */}
+          <div style={{ marginLeft: 240, flex: 1, display: "flex", flexDirection: "column", minHeight: "100vh" }}>
+            {/* Top bar */}
+            <div style={{ height: 58, background: "#0d0d0d", borderBottom: "1px solid #1a1a1a", display: "flex", alignItems: "center", padding: "0 28px", position: "sticky", top: 0, zIndex: 10 }}>
+              <div style={{ flex: 1, fontSize: 12, color: "#c8f04e", fontStyle: "italic" }}>{quote}</div>
+              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                <div style={{ width: 30, height: 30, background: "#c8f04e22", border: "1px solid #c8f04e44", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <Icon d={icons.user} size={14} />
+                </div>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 700, color: "#e0e0e0" }}>{userName}</div>
+                  {userYear && <div style={{ fontSize: 11, color: "#555" }}>{userYear}</div>}
+                </div>
+              </div>
+            </div>
+            {/* Content */}
+            <div style={{ flex: 1, padding: "32px 36px", overflowY: "auto", maxWidth: 1100 }}>
+              {pageContent}
+            </div>
+          </div>
+        </div>
+      ) : (
+        /* ── MOBILE ── */
+        <div style={{ minHeight: "100vh", paddingBottom: 64 }}>
+          {/* Mobile top bar */}
+          <div style={{ padding: "12px 16px", background: "#0d0d0d", borderBottom: "1px solid #111", display: "flex", alignItems: "center", gap: 10, position: "sticky", top: 0, zIndex: 10 }}>
+            <div style={{ width: 30, height: 30, background: "#c8f04e", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, flexShrink: 0 }}>☑</div>
+            <span style={{ fontSize: 15, fontWeight: 800, color: "#f0f0f0" }}>MonQCM</span>
+            <div style={{ flex: 1, fontSize: 11, color: "#444", fontStyle: "italic", textAlign: "center", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{quote}</div>
+            <div style={{ width: 28, height: 28, background: "#c8f04e22", border: "1px solid #c8f04e33", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+              <Icon d={icons.user} size={13} />
+            </div>
+          </div>
+          {/* Mobile content */}
+          <div style={{ padding: "16px" }}>
+            {pageContent}
+          </div>
+          {/* Mobile bottom nav */}
+          <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#0d0d0d", borderTop: "1px solid #1a1a1a", display: "flex", zIndex: 100 }}>
+            {NAV.map((n) => (
+              <button key={n.id} onClick={() => setPage(n.id)} style={{ flex: 1, padding: "10px 4px 12px", background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, position: "relative" }}>
+                <div style={{ color: page === n.id ? "#c8f04e" : "#444" }}><Icon d={n.icon} size={20} /></div>
+                <div style={{ fontSize: 9, fontWeight: 600, color: page === n.id ? "#c8f04e" : "#333", letterSpacing: 0.5 }}>{n.label}</div>
+                {page === n.id && <div style={{ width: 20, height: 2, background: "#c8f04e", borderRadius: 1, position: "absolute", bottom: 0 }} />}
               </button>
             ))}
           </div>
-
-          {/* User + logout */}
-          <div style={{ padding: "12px 10px", borderTop: "1px solid #1a1a1a" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 12px", background: "#111", borderRadius: 10, marginBottom: 8 }}>
-              <div style={{ width: 30, height: 30, background: "#c8f04e22", border: "1px solid #c8f04e44", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                <Icon d={icons.user} size={14} />
-              </div>
-              <div style={{ flex: 1, overflow: "hidden" }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#e0e0e0", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{userName}</div>
-                {userYear && <div style={{ fontSize: 10, color: "#555" }}>{userYear}</div>}
-              </div>
-            </div>
-            <button onClick={handleLogout}
-              style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 12px", borderRadius: 10, border: "none", cursor: "pointer", background: "transparent", color: "#444", fontSize: 12, textAlign: "left" }}
-              onMouseEnter={e => { e.currentTarget.style.background = "#ff4e4e11"; e.currentTarget.style.color = "#f04e4e"; }}
-              onMouseLeave={e => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = "#444"; }}>
-              <Icon d={icons.logout} size={14} /> Déconnexion
-            </button>
-          </div>
         </div>
-
-        {/* Main area (desktop) */}
-        <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-
-          {/* Top bar (desktop only) */}
-          <div className="desktop-topbar" style={{ display: "none", alignItems: "center", padding: "0 28px", height: 60, background: "#0d0d0d", borderBottom: "1px solid #1a1a1a", position: "sticky", top: 0, zIndex: 10, marginLeft: 240 }}>
-            <div style={{ flex: 1 }}>
-              <div style={{ fontSize: 11, color: "#c8f04e", fontStyle: "italic" }}>{quote}</div>
-            </div>
-            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ width: 28, height: 28, background: "#c8f04e22", border: "1px solid #c8f04e44", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <Icon d={icons.user} size={13} />
-              </div>
-              <div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#e0e0e0" }}>{userName}</div>
-                {userYear && <div style={{ fontSize: 10, color: "#555" }}>{userYear}</div>}
-              </div>
-            </div>
-          </div>
-
-          {/* Page content (desktop) */}
-          <div className="desktop-topbar" style={{ display: "none", flex: 1, padding: "28px", marginLeft: 240, overflowY: "auto" }}>
-            {page === "home" && <Dashboard questions={questions} setPage={setPage} setQuizConfig={setQuizConfig} />}
-            {page === "quizlist" && <QuizList questions={questions} setPage={setPage} setQuizConfig={setQuizConfig} />}
-            {page === "bookmarks" && <Bookmarks questions={questions} setPage={setPage} setQuizConfig={setQuizConfig} />}
-            {page === "admin" && <Admin questions={questions} />}
-          </div>
-        </div>
-      </div>
-
-      {/* ── MOBILE LAYOUT ── */}
-      <div className="desktop-sidebar" style={{ display: "none" }}>
-        {/* intentional: mobile uses bottom nav below */}
-      </div>
-
-      {/* Mobile top bar */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 16px", background: "#0d0d0d", borderBottom: "1px solid #1a1a1a" }} className="desktop-topbar" >
-        {/* shown on mobile only via the absence of desktop-topbar class */}
-      </div>
-
-      {/* Mobile content */}
-      <div style={{ flex: 1, paddingBottom: 64 }} className="mobile-content">
-        <div style={{ padding: "12px 16px", background: "#0d0d0d", borderBottom: "1px solid #111", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            <div style={{ width: 28, height: 28, background: "#c8f04e", borderRadius: 7, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14 }}>☑</div>
-            <span style={{ fontSize: 14, fontWeight: 800, color: "#f0f0f0" }}>MonQCM</span>
-          </div>
-          <div style={{ fontSize: 11, color: "#555", fontStyle: "italic", flex: 1, textAlign: "center", padding: "0 12px", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{quote}</div>
-          <div style={{ width: 28, height: 28, background: "#c8f04e22", border: "1px solid #c8f04e33", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <Icon d={icons.user} size={13} />
-          </div>
-        </div>
-        <div style={{ padding: "16px 16px 0" }}>
-          {page === "home" && <Dashboard questions={questions} setPage={setPage} setQuizConfig={setQuizConfig} />}
-          {page === "quizlist" && <QuizList questions={questions} setPage={setPage} setQuizConfig={setQuizConfig} />}
-          {page === "bookmarks" && <Bookmarks questions={questions} setPage={setPage} setQuizConfig={setQuizConfig} />}
-          {page === "admin" && <Admin questions={questions} />}
-        </div>
-      </div>
-
-      {/* Mobile bottom nav */}
-      <div className="mobile-bottom-nav" style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#0d0d0d", borderTop: "1px solid #1a1a1a", display: "flex", zIndex: 100 }}>
-        {NAV.map((n) => (
-          <button key={n.id} onClick={() => setPage(n.id)} style={{ flex: 1, padding: "10px 4px 12px", background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, position: "relative" }}>
-            <div style={{ color: page === n.id ? "#c8f04e" : "#444" }}><Icon d={n.icon} size={20} /></div>
-            <div style={{ fontSize: 9, fontWeight: 600, color: page === n.id ? "#c8f04e" : "#333", letterSpacing: 0.5 }}>{n.label}</div>
-            {page === n.id && <div style={{ width: 20, height: 2, background: "#c8f04e", borderRadius: 1, position: "absolute", bottom: 0 }} />}
-          </button>
-        ))}
-      </div>
+      )}
     </div>
   );
 }
