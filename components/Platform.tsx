@@ -590,7 +590,7 @@ export default function App() {
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                 <div style={{ width: 36, height: 36, background: "#c8f04e", borderRadius: 9, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, flexShrink: 0 }}>☑</div>
                 <div>
-                  <div style={{ fontSize: 16, fontWeight: 800, color: "#f0f0f0" }}>MonQCM</div>
+                  <div style={{ fontSize: 16, fontWeight: 800, color: "#f0f0f0" }}>MedQCM</div>
                   <div style={{ fontSize: 10, color: "#555" }}>Faculté · Oujda</div>
                 </div>
               </div>
@@ -650,7 +650,7 @@ export default function App() {
           {/* Mobile top bar */}
           <div style={{ padding: "12px 16px", background: "#0d0d0d", borderBottom: "1px solid #111", display: "flex", alignItems: "center", gap: 10, position: "sticky", top: 0, zIndex: 10 }}>
             <div style={{ width: 30, height: 30, background: "#c8f04e", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, flexShrink: 0 }}>☑</div>
-            <span style={{ fontSize: 15, fontWeight: 800, color: "#f0f0f0" }}>MonQCM</span>
+            <span style={{ fontSize: 15, fontWeight: 800, color: "#f0f0f0" }}>MedQCM</span>
             <div style={{ flex: 1, fontSize: 11, color: "#444", fontStyle: "italic", textAlign: "center", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{quote}</div>
             <div style={{ width: 28, height: 28, background: "#c8f04e22", border: "1px solid #c8f04e33", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
               <Icon d={icons.user} size={13} />
