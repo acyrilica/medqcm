@@ -288,7 +288,7 @@ function Dashboard({ questions, setPage, setQuizConfig }: { questions: Question[
       </div>
 
       {/* Stats */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))", gap: 12, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(200px, 1fr))", gap: 12, marginBottom: 24 }}>
         {([
           { label: "Questions", value: questions.length, icon: "📋", color: "#c8f04e" },
           { label: "Matières", value: subjects.length, icon: "📚", color: "#4ecbf0" },
@@ -297,8 +297,8 @@ function Dashboard({ questions, setPage, setQuizConfig }: { questions: Question[
         ] as { label: string; value: string | number; icon: string; color: string }[]).map((s, i) => (
           <div key={i} style={cardStyle}>
             <div style={{ fontSize: 20, marginBottom: 4 }}>{s.icon}</div>
-            <div style={{ fontSize: 22, fontWeight: 800, color: s.color }}>{s.value}</div>
-            <div style={{ fontSize: 11, color: "#666", marginTop: 2 }}>{s.label}</div>
+            <div style={{ fontSize: 32, fontWeight: 800, color: s.color }}>{s.value}</div>
+            <div style={{ fontSize: 13, color: "#666", marginTop: 4 }}>{s.label}</div>
           </div>
         ))}
       </div>
@@ -523,7 +523,7 @@ function Admin({ questions }: { questions: Question[] }) {
             { label: "Année récente", value: (Math.max(0, ...questions.map((q: Question) => q.year || 0)) || "—").toString(), icon: "📅" },
           ] as { label: string; value: string; icon: string }[]).map((s, i) => (
             <div key={i} style={cardStyle}>
-              <div style={{ fontSize: 20, marginBottom: 4 }}>{s.icon}</div>
+              <div style={{ fontSize: 28, marginBottom: 8 }}>{s.icon}</div>
               <div style={{ fontSize: 20, fontWeight: 800, color: "#c8f04e" }}>{s.value}</div>
               <div style={{ fontSize: 10, color: "#555", marginTop: 2 }}>{s.label}</div>
             </div>
