@@ -304,7 +304,7 @@ export default function LandingPage() {
 
         {/* Badge */}
         <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#c8f04e11', border: '1px solid #c8f04e33', borderRadius: 20, padding: '6px 16px', marginBottom: 32, animation: 'fadeUp 0.5s ease forwards' }}>
-          <span style={{ fontSize: 10, letterSpacing: 2, color: '#c8f04e', textTransform: 'uppercase', fontWeight: 700 }}>Faculté de Médecine · Maroc</span>
+          <span style={{ fontSize: 10, letterSpacing: 2, color: '#c8f04e', textTransform: 'uppercase', fontWeight: 700 }}>Faculté de Médecine et de Pharmacie </span>
         </div>
 
         {/* Title */}

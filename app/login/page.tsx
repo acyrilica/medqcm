@@ -41,8 +41,8 @@ function LoginContent() {
         {/* Logo */}
         <div style={{ textAlign: 'center', marginBottom: 32 }}>
           <div style={{ width: 44, height: 44, background: '#c8f04e', borderRadius: 12, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, margin: '0 auto 12px' }}>☑</div>
-          <div style={{ fontSize: 20, fontWeight: 800, color: '#f0f0f0' }}>MonQCM</div>
-          <div style={{ fontSize: 12, color: '#555', marginTop: 4 }}>Faculté de Médecine · Oujda</div>
+          <div style={{ fontSize: 20, fontWeight: 800, color: '#f0f0f0' }}>MedQCMQCM</div>
+          <div style={{ fontSize: 12, color: '#555', marginTop: 4 }}>Faculté de Médecine et de Pharmacie d'Oujda</div>
         </div>
 
         {/* Card */}
@@ -89,7 +89,7 @@ function LoginContent() {
           {/* Submit */}
           <button onClick={handleSubmit} disabled={loading}
             style={{ width: '100%', background: '#c8f04e', color: '#0a0a0a', border: 'none', borderRadius: 10, padding: '13px', fontSize: 13, fontWeight: 700, cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1, fontFamily: 'inherit' }}>
-            {loading ? 'Chargement...' : isSignUp ? 'Créer mon compte' : 'Se connecter'}
+            {loading ? 'Chargement...' : isSignUp ? 'Créer mon compte MedQCM' : 'Se connecter'}
           </button>
 
           {/* Switch */}
