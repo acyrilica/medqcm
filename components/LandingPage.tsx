@@ -318,7 +318,7 @@ export default function LandingPage() {
         }}>
           Révisez comme un{' '}
           <span style={{ color: '#c8f04e', fontStyle: 'italic' }}>champion</span>
-          {' '}pas comme un robot
+          {' '} and ACE your exams!
         </h1>
 
         {/* Subtitle */}

@@ -264,13 +264,13 @@ function Dashboard({ questions, setPage, setQuizConfig }: { questions: Question[
       </div>
       <div style={{ display: "flex", gap: 12, marginBottom: 28, flexWrap: "wrap" }}>
         <button onClick={() => start("training")} style={btnStyle("#c8f04e", "#0a0a0a")}>⚡ Entraînement</button>
-        <button onClick={() => start("exam")} style={btnStyle("transparent", "#c8f04e", "#c8f04e")}>🎯 Mode Examen</button>
+        <button onClick={() => start("exam")} style={btnStyle("transparent", "#c8f04e", "#c8f04e")}>⌛ Mode Examen</button>
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(180px, 1fr))", gap: 14, marginBottom: 28 }}>
         {([
           { label: "Questions", value: questions.length, icon: "📋", color: "#c8f04e" },
-          { label: "Matières", value: subjects.length, icon: "📚", color: "#4ecbf0" },
-          { label: "Multi-réponses", value: questions.filter((q: Question) => q.correct.length > 1).length, icon: "☑", color: "#f04e4e" },
+          { label: "Modules", value: subjects.length, icon: "📚", color: "#4ecbf0" },
+          { label: "QCM", value: questions.filter((q: Question) => q.correct.length > 1).length, icon: "☑", color: "#f04e4e" },
           { label: "Année récente", value: Math.max(0, ...questions.map((q: Question) => q.year || 0)) || "—", icon: "📅", color: "#b44ef0" },
         ] as { label: string; value: string | number; icon: string; color: string }[]).map((s, i) => (
           <div key={i} style={{ ...cardStyle, padding: "24px" }}>
