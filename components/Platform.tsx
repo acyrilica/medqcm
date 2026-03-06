@@ -259,7 +259,7 @@ function Dashboard({ questions, setPage, setQuizConfig }: { questions: Question[
   return (
     <div>
       <div style={{ marginBottom: 24 }}>
-        <div style={{ fontSize: 26, fontWeight: 800, color: "#f0f0f0", fontFamily: "'Playfair Display', serif" }}>Tableau de bord</div>
+        <div style={{ fontSize: 26, fontWeight: 800, color: "#f0f0f0", fontFamily: "'Playfair Display', serif" }}>Welcome back!</div>
         <div style={{ fontSize: 13, color: "#555", marginTop: 4 }}>Médecine · Faculté d&apos;Oujda</div>
       </div>
       <div style={{ display: "flex", gap: 12, marginBottom: 28, flexWrap: "wrap" }}>
