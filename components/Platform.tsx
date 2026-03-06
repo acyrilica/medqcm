@@ -25,48 +25,6 @@ interface ScoreResult {
   partialPct: number;
 }
 
-// ── SUPABASE DATA FETCH ───────────────────────────────────────────────────────
-async function fetchQuestions(): Promise<Question[]> {
-  const supabase = createClient();
-  const [isAdmin, setIsAdmin] = useState(false);
-
-useEffect(() => {
-  supabase.auth.getUser().then(async ({ data }) => {
-    if (data.user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', data.user.id)
-        .single();
-      setIsAdmin(profile?.role === 'admin');
-    }
-  });
-}, []);
-  const { data, error } = await supabase
-    .from('questions')
-    .select(`*, options (*), subjects (name), modules (name)`)
-    .order('created_at', { ascending: false });
-
-  if (error || !data) return [];
-
-  return data.map((q: any) => ({
-    id: q.id,
-    question: q.question_text,
-    options: (q.options || [])
-      .sort((a: any, b: any) => a.display_order - b.display_order)
-      .map((o: any) => o.option_text),
-    correct: (q.options || [])
-      .map((o: any, i: number) => ({ i, is_correct: o.is_correct }))
-      .filter((o: any) => o.is_correct)
-      .map((o: any) => o.i),
-    explanation: q.explanation || '',
-    subject: q.subjects?.name || '',
-    module: q.modules?.name || '',
-    year: q.year || 0,
-    difficulty: q.difficulty || 'medium',
-  }));
-}
-
 // ── SCORING ───────────────────────────────────────────────────────────────────
 function scoreAnswer(correctArr: number[], selectedSet: Set<number>): ScoreResult {
   if (selectedSet.size === 0) return { status: "wrong", partialPct: 0 };
@@ -162,7 +120,7 @@ function Quiz({ config, setPage }: { config: QuizConfig; setPage: (p: string) =>
 
   useEffect(() => {
     if (mode === "exam" && phase === "question") {
-      timerRef.current = setInterval(() => setTimeLeft(t => {
+      timerRef.current = setInterval(() => setTimeLeft((t: number | null) => {
         if (t === null || t <= 1) { clearInterval(timerRef.current!); setPhase("results"); return 0; }
         return t - 1;
       }), 1000);
@@ -178,7 +136,7 @@ function Quiz({ config, setPage }: { config: QuizConfig; setPage: (p: string) =>
 
   const toggle = (oi: number) => {
     if (isConfirmed) return;
-    setSelections(prev => {
+    setSelections((prev: Record<number, Set<number>>) => {
       const next = new Set(prev[idx] || []);
       if (isMulti) { next.has(oi) ? next.delete(oi) : next.add(oi); }
       else { next.clear(); next.add(oi); }
@@ -186,12 +144,12 @@ function Quiz({ config, setPage }: { config: QuizConfig; setPage: (p: string) =>
     });
   };
 
-  const confirm = () => { if (curSel.size === 0) return; setConfirmed(prev => new Set([...prev, idx])); };
+  const confirm = () => { if (curSel.size === 0) return; setConfirmed((prev: Set<number>) => new Set([...prev, idx])); };
   const goSubmit = () => { if (timerRef.current) clearInterval(timerRef.current); setPhase("results"); };
 
   if (phase === "results") {
     let totalScore = 0;
-    const breakdown = questions.map((q2, i) => {
+    const breakdown = questions.map((q2: Question, i: number) => {
       const sel: Set<number> = selections[i] || new Set();
       const res = scoreAnswer(q2.correct, sel);
       if (res.status === "correct") totalScore += 1;
@@ -208,9 +166,9 @@ function Quiz({ config, setPage }: { config: QuizConfig; setPage: (p: string) =>
           <div style={{ fontSize: 13, color: "#666", marginTop: 6 }}>{totalScore.toFixed(1)} / {questions.length} points</div>
           <div style={{ display: "flex", justifyContent: "center", gap: 10, marginTop: 14 }}>
             {([
-              { label: "Correctes", count: breakdown.filter(b => b.res.status === "correct").length, color: "#c8f04e" },
-              { label: "Partielles", count: breakdown.filter(b => b.res.status === "partial").length, color: "#f4a821" },
-              { label: "Fausses", count: breakdown.filter(b => b.res.status === "wrong").length, color: "#f04e4e" },
+              { label: "Correctes", count: breakdown.filter((b: {res: ScoreResult}) => b.res.status === "correct").length, color: "#c8f04e" },
+              { label: "Partielles", count: breakdown.filter((b: {res: ScoreResult}) => b.res.status === "partial").length, color: "#f4a821" },
+              { label: "Fausses", count: breakdown.filter((b: {res: ScoreResult}) => b.res.status === "wrong").length, color: "#f04e4e" },
             ] as { label: string; count: number; color: string }[]).map((s, i) => (
               <div key={i} style={{ textAlign: "center", padding: "8px 16px", background: `${s.color}11`, border: `1px solid ${s.color}33`, borderRadius: 10 }}>
                 <div style={{ fontSize: 20, fontWeight: 800, color: s.color }}>{s.count}</div>
@@ -224,7 +182,7 @@ function Quiz({ config, setPage }: { config: QuizConfig; setPage: (p: string) =>
           <button onClick={() => { setSelections({}); setConfirmed(new Set()); setIdx(0); setPhase("question"); setTimeLeft(mode === "exam" ? questions.length * 90 : null); }} style={btnStyle("#c8f04e", "#0a0a0a")}>Recommencer</button>
         </div>
         <div style={{ fontSize: 13, fontWeight: 700, color: "#e0e0e0", marginBottom: 14 }}>Révision détaillée</div>
-        {breakdown.map(({ q: q2, sel, res }, i) => (
+        {breakdown.map(({ q: q2, sel, res }: { q: Question; sel: Set<number>; res: ScoreResult }, i: number) => (
           <div key={i} style={{ ...cardStyle, marginBottom: 10, borderColor: res.status === "correct" ? "#c8f04e44" : res.status === "partial" ? "#f4a82144" : "#f04e4e44" }}>
             <div style={{ display: "flex", gap: 6, marginBottom: 8, alignItems: "center", flexWrap: "wrap" }}>
               <span style={{ fontSize: 11, fontWeight: 700, color: res.status === "correct" ? "#c8f04e" : res.status === "partial" ? "#f4a821" : "#f04e4e" }}>
@@ -233,7 +191,7 @@ function Quiz({ config, setPage }: { config: QuizConfig; setPage: (p: string) =>
               {q2.correct.length > 1 && <span style={tagStyle("#888")}>{q2.correct.length} réponses attendues</span>}
             </div>
             <div style={{ fontSize: 12, color: "#ccc", marginBottom: 10, lineHeight: 1.55 }}>{q2.question}</div>
-            {q2.options.map((o, oi) => {
+            {q2.options.map((o: string, oi: number) => {
               const isC = q2.correct.includes(oi), isSel = sel.has(oi);
               return (
                 <div key={oi} style={{ fontSize: 11, padding: "5px 10px", borderRadius: 6, marginBottom: 3, background: isC ? "#c8f04e1a" : isSel ? "#f04e4e1a" : "transparent", color: isC ? "#c8f04e" : isSel ? "#f04e4e" : "#444", display: "flex", alignItems: "center", gap: 6 }}>
@@ -283,44 +241,40 @@ function Quiz({ config, setPage }: { config: QuizConfig; setPage: (p: string) =>
         </div>
         <div style={{ fontSize: 15, fontWeight: 600, color: "#f0f0f0", lineHeight: 1.65, marginBottom: 6, fontFamily: "'Playfair Display', serif" }}>{q.question}</div>
         <div style={{ fontSize: 11, color: "#3a3a3a", marginBottom: 16 }}>{isMulti ? "Cochez toutes les réponses correctes" : "Sélectionnez une seule réponse"}</div>
-
         <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 16 }}>
-          {q.options.map((o, oi) => (
+          {q.options.map((o: string, oi: number) => (
             <OptionBtn key={oi} label={String.fromCharCode(65 + oi)} text={o} selected={curSel.has(oi)} feedback={showFeedback} isCorrectOpt={q.correct.includes(oi)} isMulti={isMulti} disabled={showFeedback} onToggle={() => toggle(oi)} />
           ))}
         </div>
-
         {isMulti && !isConfirmed && curSel.size > 0 && (
           <div style={{ fontSize: 11, color: "#555", textAlign: "center", marginBottom: 10 }}>
             {curSel.size} sélectionnée{curSel.size > 1 ? "s" : ""} · {q.correct.length} attendue{q.correct.length > 1 ? "s" : ""}
           </div>
         )}
-
         {mode === "training" && !isConfirmed && (
           <button onClick={confirm} disabled={curSel.size === 0}
             style={{ ...btnStyle(curSel.size === 0 ? "#141414" : "#c8f04e", curSel.size === 0 ? "#333" : "#0a0a0a"), width: "100%", marginBottom: 12, opacity: curSel.size === 0 ? 0.5 : 1 }}>
             Valider ma réponse
           </button>
         )}
-
         {showFeedback && feedStatus && (
           <div style={{ background: `${feedbackColor}0d`, border: `1px solid ${feedbackColor}44`, borderRadius: 12, padding: 14 }}>
             <div style={{ fontSize: 12, fontWeight: 700, color: feedbackColor, marginBottom: 6 }}>{feedbackLabel}</div>
-            {isMulti && <div style={{ fontSize: 11, color: "#666", marginBottom: 8 }}>Bonnes réponses : {q.correct.map(i => String.fromCharCode(65 + i)).join(", ")}</div>}
+            {isMulti && <div style={{ fontSize: 11, color: "#666", marginBottom: 8 }}>Bonnes réponses : {q.correct.map((i: number) => String.fromCharCode(65 + i)).join(", ")}</div>}
             {q.explanation && <div style={{ fontSize: 12, color: "#aaa", lineHeight: 1.65 }}>💡 {q.explanation}</div>}
           </div>
         )}
       </div>
 
-      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: "#0d0d0d", borderTop: "1px solid #1a1a1a", padding: "10px 16px", display: "flex", gap: 10, justifyContent: "space-between", alignItems: "center", zIndex: 10 }}>
+      <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 900, background: "#0d0d0d", borderTop: "1px solid #1a1a1a", padding: "10px 16px", display: "flex", gap: 10, justifyContent: "space-between", alignItems: "center", zIndex: 10 }}>
         <div style={{ display: "flex", gap: 8 }}>
-          <button onClick={() => setFlagged(prev => { const n = new Set(prev); n.has(idx) ? n.delete(idx) : n.add(idx); return n; })} style={{ background: flagged.has(idx) ? "#f4a82122" : "#111", border: `1px solid ${flagged.has(idx) ? "#f4a821" : "#2a2a2a"}`, borderRadius: 8, padding: "8px 10px", cursor: "pointer", color: flagged.has(idx) ? "#f4a821" : "#555" }}><Icon d={icons.flag} size={15} /></button>
-          <button onClick={() => setBookmarked(prev => { const n = new Set(prev); n.has(idx) ? n.delete(idx) : n.add(idx); return n; })} style={{ background: bookmarked.has(idx) ? "#4e80f022" : "#111", border: `1px solid ${bookmarked.has(idx) ? "#4e80f0" : "#2a2a2a"}`, borderRadius: 8, padding: "8px 10px", cursor: "pointer", color: bookmarked.has(idx) ? "#4e80f0" : "#555" }}><Icon d={icons.bookmark} size={15} /></button>
+          <button onClick={() => setFlagged((prev: Set<number>) => { const n = new Set(prev); n.has(idx) ? n.delete(idx) : n.add(idx); return n; })} style={{ background: flagged.has(idx) ? "#f4a82122" : "#111", border: `1px solid ${flagged.has(idx) ? "#f4a821" : "#2a2a2a"}`, borderRadius: 8, padding: "8px 10px", cursor: "pointer", color: flagged.has(idx) ? "#f4a821" : "#555" }}><Icon d={icons.flag} size={15} /></button>
+          <button onClick={() => setBookmarked((prev: Set<number>) => { const n = new Set(prev); n.has(idx) ? n.delete(idx) : n.add(idx); return n; })} style={{ background: bookmarked.has(idx) ? "#4e80f022" : "#111", border: `1px solid ${bookmarked.has(idx) ? "#4e80f0" : "#2a2a2a"}`, borderRadius: 8, padding: "8px 10px", cursor: "pointer", color: bookmarked.has(idx) ? "#4e80f0" : "#555" }}><Icon d={icons.bookmark} size={15} /></button>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
-          {idx > 0 && <button onClick={() => setIdx(i => i - 1)} style={navBtnStyle}>← Préc.</button>}
+          {idx > 0 && <button onClick={() => setIdx((i: number) => i - 1)} style={navBtnStyle}>← Préc.</button>}
           {idx < questions.length - 1
-            ? <button onClick={() => setIdx(i => i + 1)} style={{ ...navBtnStyle, background: "#c8f04e", color: "#0a0a0a", border: "none", fontWeight: 700 }}>Suiv. →</button>
+            ? <button onClick={() => setIdx((i: number) => i + 1)} style={{ ...navBtnStyle, background: "#c8f04e", color: "#0a0a0a", border: "none", fontWeight: 700 }}>Suiv. →</button>
             : <button onClick={goSubmit} style={{ ...navBtnStyle, background: "#c8f04e", color: "#0a0a0a", border: "none", fontWeight: 700 }}>Terminer ✓</button>}
         </div>
       </div>
@@ -330,7 +284,7 @@ function Quiz({ config, setPage }: { config: QuizConfig; setPage: (p: string) =>
 
 // ── DASHBOARD ─────────────────────────────────────────────────────────────────
 function Dashboard({ questions, setPage, setQuizConfig }: { questions: Question[]; setPage: (p: string) => void; setQuizConfig: (c: QuizConfig) => void }) {
-  const subjects = [...new Set(questions.map(q => q.subject).filter(Boolean))];
+  const subjects = [...new Set(questions.map((q: Question) => q.subject).filter(Boolean))];
   const start = (mode: 'training' | 'exam', qs: Question[] = questions) => { setQuizConfig({ questions: qs, mode }); setPage("quiz"); };
 
   return (
@@ -344,14 +298,13 @@ function Dashboard({ questions, setPage, setQuizConfig }: { questions: Question[
           <button onClick={() => start("exam")} style={btnStyle("transparent", "#c8f04e", "#c8f04e")}>🎯 Mode Examen</button>
         </div>
       </div>
-
       <div style={{ padding: "24px 20px", display: "flex", flexDirection: "column", gap: 20 }}>
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 12 }}>
           {([
             { label: "Questions", value: questions.length, icon: "📋", color: "#c8f04e" },
             { label: "Matières", value: subjects.length, icon: "📚", color: "#4ecbf0" },
-            { label: "Multi-réponses", value: questions.filter(q => q.correct.length > 1).length, icon: "☑", color: "#f04e4e" },
-            { label: "Année récente", value: Math.max(0, ...questions.map(q => q.year || 0)) || "—", icon: "📅", color: "#b44ef0" },
+            { label: "Multi-réponses", value: questions.filter((q: Question) => q.correct.length > 1).length, icon: "☑", color: "#f04e4e" },
+            { label: "Année récente", value: Math.max(0, ...questions.map((q: Question) => q.year || 0)) || "—", icon: "📅", color: "#b44ef0" },
           ] as { label: string; value: string | number; icon: string; color: string }[]).map((s, i) => (
             <div key={i} style={cardStyle}>
               <div style={{ fontSize: 22, marginBottom: 4 }}>{s.icon}</div>
@@ -360,20 +313,19 @@ function Dashboard({ questions, setPage, setQuizConfig }: { questions: Question[
             </div>
           ))}
         </div>
-
         {subjects.length > 0 && (
           <div style={cardStyle}>
             <div style={{ fontSize: 13, fontWeight: 700, color: "#e0e0e0", marginBottom: 14 }}>Réviser par matière</div>
             <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              {subjects.map((s, i) => {
-                const count = questions.filter(q => q.subject === s).length;
+              {subjects.map((s: string, i: number) => {
+                const count = questions.filter((q: Question) => q.subject === s).length;
                 return (
                   <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: i < subjects.length - 1 ? "1px solid #1a1a1a" : "none" }}>
                     <div>
                       <div style={{ fontSize: 13, color: "#ccc", fontWeight: 600 }}>{s}</div>
                       <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>{count} question{count > 1 ? "s" : ""}</div>
                     </div>
-                    <button onClick={() => start("training", questions.filter(q => q.subject === s))}
+                    <button onClick={() => start("training", questions.filter((q: Question) => q.subject === s))}
                       style={{ fontSize: 11, background: "#c8f04e22", color: "#c8f04e", border: "1px solid #c8f04e44", borderRadius: 8, padding: "6px 12px", cursor: "pointer", fontFamily: "inherit", fontWeight: 600 }}>
                       Pratiquer
                     </button>
@@ -392,8 +344,8 @@ function Dashboard({ questions, setPage, setQuizConfig }: { questions: Question[
 function QuizList({ questions, setPage, setQuizConfig }: { questions: Question[]; setPage: (p: string) => void; setQuizConfig: (c: QuizConfig) => void }) {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState("all");
-  const subjects = [...new Set(questions.map(q => q.subject).filter(Boolean))];
-  const filtered = questions.filter(q =>
+  const subjects = [...new Set(questions.map((q: Question) => q.subject).filter(Boolean))];
+  const filtered = questions.filter((q: Question) =>
     (filter === "all" || q.subject === filter) &&
     q.question.toLowerCase().includes(search.toLowerCase())
   );
@@ -404,10 +356,10 @@ function QuizList({ questions, setPage, setQuizConfig }: { questions: Question[]
       <div style={{ fontSize: 18, fontWeight: 800, color: "#f0f0f0", fontFamily: "'Playfair Display', serif", marginBottom: 16 }}>Bibliothèque QCM</div>
       <div style={{ position: "relative", marginBottom: 12 }}>
         <div style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "#555" }}><Icon d={icons.search} size={15} /></div>
-        <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Rechercher une question..." style={{ width: "100%", background: "#111", border: "1px solid #2a2a2a", borderRadius: 10, padding: "10px 12px 10px 36px", color: "#e0e0e0", fontSize: 13, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher une question..." style={{ width: "100%", background: "#111", border: "1px solid #2a2a2a", borderRadius: 10, padding: "10px 12px 10px 36px", color: "#e0e0e0", fontSize: 13, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
       </div>
       <div style={{ display: "flex", gap: 8, overflowX: "auto", paddingBottom: 8, marginBottom: 16 }}>
-        {["all", ...subjects].map(s => (
+        {["all", ...subjects].map((s: string) => (
           <button key={s} onClick={() => setFilter(s)} style={{ flexShrink: 0, padding: "6px 14px", borderRadius: 20, fontSize: 11, fontWeight: 600, cursor: "pointer", background: filter === s ? "#c8f04e" : "#1a1a1a", color: filter === s ? "#0a0a0a" : "#888", border: "none", fontFamily: "inherit" }}>
             {s === "all" ? `Tout (${questions.length})` : s}
           </button>
@@ -424,7 +376,7 @@ function QuizList({ questions, setPage, setQuizConfig }: { questions: Question[]
         </div>
       ) : (
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {filtered.map(q => (
+          {filtered.map((q: Question) => (
             <div key={q.id} style={{ ...cardStyle, cursor: "pointer" }} onClick={() => { setQuizConfig({ questions: [q], mode: "training" }); setPage("quiz"); }}>
               <div style={{ display: "flex", gap: 8, marginBottom: 6, flexWrap: "wrap" }}>
                 {q.subject && <span style={tagStyle("#c8f04e")}>{q.subject}</span>}
@@ -468,7 +420,7 @@ function Bookmarks({ questions, setPage, setQuizConfig }: { questions: Question[
         </div>
       ) : (
         <>
-          {current.map(q => (
+          {current.map((q: Question) => (
             <div key={q.id} style={{ ...cardStyle, marginBottom: 8, cursor: "pointer", borderColor: tab === 'mistakes' ? "#f04e4e22" : "#1e1e1e" }}
               onClick={() => { setQuizConfig({ questions: [q], mode: "training" }); setPage("quiz"); }}>
               <div style={{ display: "flex", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
@@ -498,14 +450,14 @@ function Admin({ questions }: { questions: Question[] }) {
   const [imported, setImported] = useState(false);
   const [importing, setImporting] = useState(false);
   const [search, setSearch] = useState("");
-  const filtered = questions.filter(q => q.question.toLowerCase().includes(search.toLowerCase()));
+  const filtered = questions.filter((q: Question) => q.question.toLowerCase().includes(search.toLowerCase()));
 
   const parseCSV = () => {
     const lines = csvText.trim().split("\n").filter(Boolean);
-    const result: Question[] = lines.map((line, idx) => {
+    const result: Question[] = lines.map((line: string, idx: number) => {
       const parts = line.split(",");
       const rawCorrect = parts[6] || "1";
-      const correctArr = rawCorrect.split(";").map(n => parseInt(n.trim()) - 1).filter(n => !isNaN(n));
+      const correctArr = rawCorrect.split(";").map((n: string) => parseInt(n.trim()) - 1).filter((n: number) => !isNaN(n));
       return { id: idx, question: parts[0], options: parts.slice(1, 6).filter(Boolean), correct: correctArr, explanation: parts[7] || "", subject: parts[8] || "", module: parts[9] || "", year: parseInt(parts[10]) || 2024, difficulty: "medium" };
     });
     setParsed(result);
@@ -529,14 +481,13 @@ function Admin({ questions }: { questions: Question[] }) {
           <button key={id} onClick={() => setTab(id)} style={{ flex: 1, padding: "8px 4px", borderRadius: 8, fontSize: 11, fontWeight: 600, border: "none", cursor: "pointer", background: tab === id ? "#c8f04e" : "transparent", color: tab === id ? "#0a0a0a" : "#666", fontFamily: "inherit" }}>{label}</button>
         ))}
       </div>
-
       {tab === "questions" && (
         <div>
           <div style={{ position: "relative", marginBottom: 14 }}>
             <div style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "#555" }}><Icon d={icons.search} size={14} /></div>
-            <input value={search} onChange={e => setSearch(e.target.value)} placeholder={`Rechercher...`} style={{ width: "100%", background: "#111", border: "1px solid #2a2a2a", borderRadius: 8, padding: "9px 10px 9px 32px", color: "#ccc", fontSize: 12, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
+            <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Rechercher..." style={{ width: "100%", background: "#111", border: "1px solid #2a2a2a", borderRadius: 8, padding: "9px 10px 9px 32px", color: "#ccc", fontSize: 12, outline: "none", boxSizing: "border-box", fontFamily: "inherit" }} />
           </div>
-          {filtered.slice(0, 20).map((q, i) => (
+          {filtered.slice(0, 20).map((q: Question, i: number) => (
             <div key={i} style={{ ...cardStyle, marginBottom: 8 }}>
               <div style={{ display: "flex", gap: 6, marginBottom: 6, flexWrap: "wrap" }}>
                 {q.subject && <span style={tagStyle("#c8f04e")}>{q.subject}</span>}
@@ -549,7 +500,6 @@ function Admin({ questions }: { questions: Question[] }) {
           {filtered.length > 20 && <div style={{ textAlign: "center", fontSize: 11, color: "#555", marginTop: 8 }}>+{filtered.length - 20} autres</div>}
         </div>
       )}
-
       {tab === "upload" && (
         <div>
           <div style={{ ...cardStyle, marginBottom: 14 }}>
@@ -559,18 +509,18 @@ function Admin({ questions }: { questions: Question[] }) {
               1 réponse: <span style={{ color: "#c8f04e" }}>3</span> · Multi: <span style={{ color: "#f4a821" }}>1;3;4</span>
             </div>
           </div>
-          <textarea value={csvText} onChange={e => { setCsvText(e.target.value); setImported(false); setParsed([]); }}
+          <textarea value={csvText} onChange={(e) => { setCsvText(e.target.value); setImported(false); setParsed([]); }}
             placeholder="Question,OptionA,OptionB,OptionC,OptionD,OptionE,1;3,Explication,Matière,Module,2023"
             style={{ width: "100%", background: "#111", border: "1px solid #2a2a2a", borderRadius: 10, padding: 12, color: "#ccc", fontSize: 11, fontFamily: "monospace", minHeight: 100, outline: "none", resize: "vertical", boxSizing: "border-box", marginBottom: 10 }} />
           <button onClick={parseCSV} style={{ ...btnStyle("#c8f04e", "#0a0a0a"), width: "100%", marginBottom: 10 }}>Analyser le CSV</button>
           {parsed.length > 0 && !imported && (
             <div>
               <div style={{ fontSize: 12, color: "#888", marginBottom: 10 }}>{parsed.length} question(s) détectée(s)</div>
-              {parsed.map((p, i) => (
+              {parsed.map((p: Question, i: number) => (
                 <div key={i} style={{ ...cardStyle, marginBottom: 6, borderColor: "#c8f04e33" }}>
                   <div style={{ fontSize: 11, color: "#c8f04e", fontWeight: 700, marginBottom: 4 }}>Q{i + 1} · {p.subject || "N/A"}</div>
                   <div style={{ fontSize: 12, color: "#ccc", marginBottom: 4 }}>{p.question}</div>
-                  <div style={{ fontSize: 10, color: "#555" }}>Réponses : {p.correct.map(c => String.fromCharCode(65 + c)).join(", ")}</div>
+                  <div style={{ fontSize: 10, color: "#555" }}>Réponses : {p.correct.map((c: number) => String.fromCharCode(65 + c)).join(", ")}</div>
                 </div>
               ))}
               <button onClick={importQuestions} disabled={importing} style={{ ...btnStyle("#c8f04e", "#0a0a0a"), width: "100%", marginTop: 8 }}>
@@ -581,15 +531,14 @@ function Admin({ questions }: { questions: Question[] }) {
           {imported && <div style={{ background: "#c8f04e22", border: "1px solid #c8f04e55", borderRadius: 10, padding: 14, textAlign: "center", color: "#c8f04e", fontSize: 13, fontWeight: 700 }}>✓ Import réussi !</div>}
         </div>
       )}
-
       {tab === "stats" && (
         <div>
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
             {([
               { label: "Total questions", value: questions.length.toString(), icon: "📋" },
-              { label: "Matières", value: [...new Set(questions.map(q => q.subject))].length.toString(), icon: "📚" },
-              { label: "Multi-réponses", value: questions.filter(q => q.correct.length > 1).length.toString(), icon: "☑" },
-              { label: "Année récente", value: (Math.max(0, ...questions.map(q => q.year || 0)) || "—").toString(), icon: "📅" },
+              { label: "Matières", value: [...new Set(questions.map((q: Question) => q.subject))].length.toString(), icon: "📚" },
+              { label: "Multi-réponses", value: questions.filter((q: Question) => q.correct.length > 1).length.toString(), icon: "☑" },
+              { label: "Année récente", value: (Math.max(0, ...questions.map((q: Question) => q.year || 0)) || "—").toString(), icon: "📅" },
             ] as { label: string; value: string; icon: string }[]).map((s, i) => (
               <div key={i} style={cardStyle}>
                 <div style={{ fontSize: 20, marginBottom: 4 }}>{s.icon}</div>
@@ -610,27 +559,61 @@ export default function App() {
   const [quizConfig, setQuizConfig] = useState<QuizConfig | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
-  const supabase = createClient();
   const [isAdmin, setIsAdmin] = useState(false);
-
-useEffect(() => {
-  supabase.auth.getUser().then(async ({ data }) => {
-    if (data.user) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', data.user.id)
-        .single();
-      setIsAdmin(profile?.role === 'admin');
-    }
-  });
-}, []);
+  const supabase = createClient();
 
   useEffect(() => {
-    fetchQuestions().then(q => { setQuestions(q); setLoading(false); });
+    const loadData = async () => {
+      try {
+        // Fetch questions
+        const { data, error } = await supabase
+          .from('questions')
+          .select(`*, options (*), subjects (name), modules (name)`)
+          .order('created_at', { ascending: false });
+
+        if (!error && data) {
+          const mapped: Question[] = data.map((q: any) => ({
+            id: q.id,
+            question: q.question_text,
+            options: (q.options || [])
+              .sort((a: any, b: any) => a.display_order - b.display_order)
+              .map((o: any) => o.option_text),
+            correct: (q.options || [])
+              .map((o: any, i: number) => ({ i, is_correct: o.is_correct }))
+              .filter((o: any) => o.is_correct)
+              .map((o: any) => o.i),
+            explanation: q.explanation || '',
+            subject: q.subjects?.name || '',
+            module: q.modules?.name || '',
+            year: q.year || 0,
+            difficulty: q.difficulty || 'medium',
+          }));
+          setQuestions(mapped);
+        }
+
+        // Check admin role
+        const { data: userData } = await supabase.auth.getUser();
+        if (userData.user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', userData.user.id)
+            .single();
+          setIsAdmin(profile?.role === 'admin');
+        }
+      } catch (e) {
+        console.error('Load error:', e);
+      }
+      setLoading(false);
+    };
+
+    loadData();
   }, []);
 
-  const handleLogout = async () => { await supabase.auth.signOut(); window.location.href = '/'; };
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    window.location.href = '/';
+  };
 
   const NAV = [
     { id: "home", icon: icons.home, label: "Accueil" },
@@ -638,6 +621,7 @@ useEffect(() => {
     { id: "bookmarks", icon: icons.bookmark, label: "Révision" },
     ...(isAdmin ? [{ id: "admin", icon: icons.admin, label: "Admin" }] : []),
   ];
+
   if (loading) return (
     <div style={{ minHeight: "100vh", background: "#0a0a0a", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 12 }}>
       <div style={{ width: 32, height: 32, background: "#c8f04e", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16 }}>☑</div>
@@ -646,7 +630,7 @@ useEffect(() => {
   );
 
   return (
-    <div style={{ fontFamily: "'DM Sans', 'Segoe UI', sans-serif", background: "#0a0a0a", color: "#e0e0e0", minHeight: "100vh", maxWidth: 480, margin: "0 auto", position: "relative" }}>
+    <div style={{ fontFamily: "'DM Sans', 'Segoe UI', sans-serif", background: "#0a0a0a", color: "#e0e0e0", minHeight: "100vh", maxWidth: 900, margin: "0 auto", position: "relative" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&family=Playfair+Display:wght@700;800;900&display=swap');
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
@@ -671,8 +655,8 @@ useEffect(() => {
       </div>
 
       {page !== "quiz" && (
-        <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 480, background: "#0d0d0d", borderTop: "1px solid #1a1a1a", display: "flex", zIndex: 100 }}>
-          {NAV.map(n => (
+        <div style={{ position: "fixed", bottom: 0, left: "50%", transform: "translateX(-50%)", width: "100%", maxWidth: 900, background: "#0d0d0d", borderTop: "1px solid #1a1a1a", display: "flex", zIndex: 100 }}>
+          {NAV.map((n) => (
             <button key={n.id} onClick={() => setPage(n.id)} style={{ flex: 1, padding: "10px 4px 12px", background: "none", border: "none", cursor: "pointer", display: "flex", flexDirection: "column", alignItems: "center", gap: 3, position: "relative" }}>
               <div style={{ color: page === n.id ? "#c8f04e" : "#444" }}><Icon d={n.icon} size={20} /></div>
               <div style={{ fontSize: 9, fontWeight: 600, color: page === n.id ? "#c8f04e" : "#333", letterSpacing: 0.5 }}>{n.label}</div>
