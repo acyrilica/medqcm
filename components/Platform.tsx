@@ -32,7 +32,7 @@ async function fetchQuestions(): Promise<Question[]> {
 
 useEffect(() => {
   supabase.auth.getUser().then(async ({ data }) => {
-    if 2(data.user) {
+    if (data.user) {
       const { data: profile } = await supabase
         .from('profiles')
         .select('role')
