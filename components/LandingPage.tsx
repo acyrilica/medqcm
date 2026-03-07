@@ -451,7 +451,7 @@ export default function LandingPage() {
             {/* Launch banner */}
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#c8f04e14', border: '1px solid #c8f04e33', borderRadius: 30, padding: '8px 20px', marginBottom: 36 }}>
               <span style={{ fontSize: 14 }}>🎉</span>
-              <span style={{ fontSize: 12, color: '#c8f04e', fontWeight: 700 }}>Prix de lancement — offre limitée au S2 2024/2025</span>
+              <span style={{ fontSize: 12, color: '#c8f04e', fontWeight: 700 }}>Prix de lancement — offre limitée au 2ème semestre 2025/2026</span>
             </div>
 
             {/* Toggle: Semestre / Année */}
