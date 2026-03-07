@@ -129,6 +129,7 @@ function Quiz({ config, setPage, userId }: { config: QuizConfig; setPage: (p: st
   const goSubmit = () => { if (timerRef.current) clearInterval(timerRef.current); setPhase("results"); };
   useEffect(() => {
   if (phase !== "results" || !userId) return;
+  console.log("Saving result for userId:", userId)
   const saveResult = async () => {
     try {
       const supabase = createClient();
