@@ -89,7 +89,7 @@ function OptionBtn({ label, text, selected, feedback, isCorrectOpt, isMulti, dis
 }
 
 // ── QUIZ ──────────────────────────────────────────────────────────────────────
-function Quiz({ config, setPage }: { config: QuizConfig; setPage: (p: string) => void }) {
+function Quiz({ config, setPage, userId }: { config: QuizConfig; setPage: (p: string) => void; userId: string }) {
   const { questions, mode } = config;
   const [selections, setSelections] = useState<Record<number, Set<number>>>({});
   const [confirmed, setConfirmed] = useState<Set<number>>(new Set());
@@ -127,6 +127,32 @@ function Quiz({ config, setPage }: { config: QuizConfig; setPage: (p: string) =>
 
   const confirm = () => { if (curSel.size === 0) return; setConfirmed((prev: Set<number>) => new Set([...prev, idx])); };
   const goSubmit = () => { if (timerRef.current) clearInterval(timerRef.current); setPhase("results"); };
+  useEffect(() => {
+  if (phase !== "results" || !userId) return;
+  const saveResult = async () => {
+    try {
+      const supabase = createClient();
+      let totalScore = 0;
+      questions.forEach((q2: Question, i: number) => {
+        const sel: Set<number> = selections[i] || new Set();
+        const res = scoreAnswer(q2.correct, sel);
+        if (res.status === "correct") totalScore += 1;
+        else if (res.status === "partial") totalScore += res.partialPct / 100;
+      });
+      const pct = Math.round((totalScore / questions.length) * 100);
+      const subjectList = [...new Set(questions.map((q2: Question) => q2.subject).filter(Boolean))];
+      await supabase.from("quiz_results").insert({
+        user_id: userId,
+        score: totalScore,
+        total: questions.length,
+        percentage: pct,
+        mode,
+        subject: subjectList.length === 1 ? subjectList[0] : subjectList.join(", ") || null,
+      });
+    } catch (e) { console.error("Failed to save result:", e); }
+  };
+  saveResult();
+}, [phase]);
 
   if (phase === "results") {
     let totalScore = 0;
@@ -507,6 +533,7 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userName, setUserName] = useState("");
+  const [userId, setUserId] = useState(""); 
   const [userYear, setUserYear] = useState("");
   const [isDesktop, setIsDesktop] = useState(false);
   const supabase = createClient();
@@ -535,6 +562,7 @@ export default function App() {
         if (userData.user) {
           const meta = userData.user.user_metadata;
           setUserName(meta?.name || userData.user.email?.split('@')[0] || 'Étudiant');
+          
           setUserYear(meta?.year ? `${meta.year}ème année` : '');
           const { data: profile } = await supabase.from('profiles').select('role').eq('id', userData.user.id).single();
           setIsAdmin(profile?.role === 'admin');
@@ -573,7 +601,7 @@ export default function App() {
   if (page === "quiz" && quizConfig) return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", background: "#0a0a0a", color: "#e0e0e0", minHeight: "100vh" }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&family=Playfair+Display:wght@700;800;900&display=swap'); * { box-sizing: border-box; } button,input,textarea,select { font-family: inherit; }`}</style>
-      <Quiz config={quizConfig} setPage={setPage} />
+      <Quiz config={quizConfig} setPage={setPage} userId={userId} />
     </div>
   );
 
