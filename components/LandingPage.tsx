@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from 'react'
 export default function LandingPage() {
   const [scrollY, setScrollY] = useState(0)
   const [openFaq, setOpenFaq] = useState<number | null>(null)
-  const [billingPlan, setBillingPlan] = useState<'semester' | 'year'>('semester')
 
   useEffect(() => {
     const onScroll = () => setScrollY(window.scrollY)
@@ -48,9 +47,9 @@ export default function LandingPage() {
   const plans = [
     {
       name: 'Gratuit',
-      priceSemester: 0,
-      priceYear: 0,
-      color: '#333',
+      price: null,
+      priceLabel: 'Gratuit',
+      originalPrice: null,
       accent: '#888',
       desc: 'Pour découvrir la plateforme',
       features: [
@@ -66,9 +65,9 @@ export default function LandingPage() {
     },
     {
       name: 'Par Semestre',
-      priceSemester: 50,
-      priceYear: 65,
-      color: '#c8f04e',
+      price: 50,
+      priceLabel: '50',
+      originalPrice: 65,
       accent: '#c8f04e',
       desc: 'Accès complet pour un semestre',
       features: [
@@ -86,16 +85,16 @@ export default function LandingPage() {
     },
     {
       name: 'Année Complète',
-      priceSemester: 85,
-      priceYear: 110,
-      color: '#4e80f0',
+      price: 85,
+      priceLabel: '85',
+      originalPrice: 110,
       accent: '#4e80f0',
       desc: 'S1 + S2 — meilleure valeur',
       features: [
         'Tout ce qui est inclus dans Semestre',
         'Accès S1 + S2 complets',
-        'Économisez 15 MAD',
-        'Priorité support',
+        'Économisez 25 MAD vs 2× semestre',
+        'Support prioritaire',
       ],
       cta: "Choisir l'année",
       ctaHref: '/login?signup=true',
@@ -441,100 +440,69 @@ export default function LandingPage() {
       {/* PRICING */}
       <section id="pricing" style={{ padding: '100px 24px', background: '#080808' }}>
         <div style={{ maxWidth: 1000, margin: '0 auto' }}>
-          <div style={{ textAlign: 'center', marginBottom: 48 }}>
+          <div style={{ textAlign: 'center', marginBottom: 56 }}>
             <div style={{ fontSize: 11, letterSpacing: 3, color: '#c8f04e', textTransform: 'uppercase', fontWeight: 700, marginBottom: 16 }}>Tarifs</div>
             <h2 style={{ fontSize: 42, fontWeight: 900, fontFamily: "'Playfair Display', serif", color: '#f0f0f0', lineHeight: 1.15, letterSpacing: -1, marginBottom: 12 }}>
-              Simple et transparent
+              Découvrez nos tarifs
             </h2>
-            <p style={{ fontSize: 14, color: '#555', marginBottom: 32 }}>Payez uniquement pour la période dont vous avez besoin</p>
-
-            {/* Launch banner */}
-            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#c8f04e14', border: '1px solid #c8f04e33', borderRadius: 30, padding: '8px 20px', marginBottom: 36 }}>
+            <p style={{ fontSize: 14, color: '#555', marginBottom: 28 }}>Payez uniquement pour la période dont vous avez besoin</p>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#c8f04e14', border: '1px solid #c8f04e33', borderRadius: 30, padding: '8px 20px' }}>
               <span style={{ fontSize: 14 }}>🎉</span>
-              <span style={{ fontSize: 12, color: '#c8f04e', fontWeight: 700 }}>Prix de lancement — offre limitée au 2ème semestre 2025/2026</span>
-            </div>
-
-            {/* Toggle: Semestre / Année */}
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 0, background: '#111', border: '1px solid #1e1e1e', borderRadius: 12, padding: 4, width: 'fit-content', margin: '0 auto' }}>
-              <button
-                onClick={() => setBillingPlan('semester')}
-                style={{ padding: '9px 24px', borderRadius: 9, fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', background: billingPlan === 'semester' ? '#c8f04e' : 'transparent', color: billingPlan === 'semester' ? '#0a0a0a' : '#555', transition: 'all 0.2s' }}
-              >
-                Par semestre
-              </button>
-              <button
-                onClick={() => setBillingPlan('year')}
-                style={{ padding: '9px 24px', borderRadius: 9, fontSize: 13, fontWeight: 700, border: 'none', cursor: 'pointer', fontFamily: 'inherit', background: billingPlan === 'year' ? '#c8f04e' : 'transparent', color: billingPlan === 'year' ? '#0a0a0a' : '#555', transition: 'all 0.2s', display: 'flex', alignItems: 'center', gap: 6 }}
-              >
-                Année complète <span style={{ fontSize: 10, background: billingPlan === 'year' ? '#0a0a0a22' : '#c8f04e22', color: billingPlan === 'year' ? '#0a0a0a' : '#c8f04e', borderRadius: 4, padding: '1px 6px', fontWeight: 800 }}>-15%</span>
-              </button>
+              <span style={{ fontSize: 12, color: '#c8f04e', fontWeight: 700 }}>Prix de lancement — offre limitée au 2ème semestre de 2025/2026</span>
             </div>
           </div>
 
           <div className="plans-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-            {plans.map((p, i) => {
-              const price = billingPlan === 'semester' ? p.priceSemester : p.priceYear
-              const originalPrice = billingPlan === 'year' && p.priceSemester > 0 ? p.priceSemester * 2 : null
-              return (
-                <div key={i} className={`plan-card${p.highlight ? ' highlight' : ''}`}>
-                  {/* Badge */}
-                  {p.badge && (
-                    <div style={{ position: 'absolute', top: 16, right: 16, fontSize: 9, background: p.highlight ? '#c8f04e' : p.accent, color: p.highlight ? '#0a0a0a' : '#0a0a0a', borderRadius: 6, padding: '3px 8px', fontWeight: 800, letterSpacing: 1 }}>{p.badge}</div>
+            {plans.map((p, i) => (
+              <div key={i} className={`plan-card${p.highlight ? ' highlight' : ''}`}>
+                {p.badge && (
+                  <div style={{ position: 'absolute', top: 16, right: 16, fontSize: 9, background: p.highlight ? '#c8f04e' : p.accent, color: '#0a0a0a', borderRadius: 6, padding: '3px 8px', fontWeight: 800, letterSpacing: 1 }}>{p.badge}</div>
+                )}
+                <div style={{ fontSize: 13, fontWeight: 700, color: p.accent, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 }}>{p.name}</div>
+                <div style={{ fontSize: 12, color: '#555', marginBottom: 24 }}>{p.desc}</div>
+
+                <div style={{ marginBottom: 8 }}>
+                  {p.price === null ? (
+                    <span style={{ fontSize: 44, fontWeight: 900, color: '#f0f0f0', fontFamily: "'Playfair Display', serif", letterSpacing: -1 }}>Gratuit</span>
+                  ) : (
+                    <>
+                      {p.originalPrice && (
+                        <div style={{ fontSize: 13, color: '#333', textDecoration: 'line-through', marginBottom: 2 }}>{p.originalPrice} MAD</div>
+                      )}
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
+                        <span style={{ fontSize: 44, fontWeight: 900, color: '#f0f0f0', fontFamily: "'Playfair Display', serif", letterSpacing: -1 }}>{p.priceLabel}</span>
+                        <span style={{ fontSize: 13, color: '#555' }}>MAD</span>
+                      </div>
+                      <div style={{ fontSize: 11, color: '#c8f04e', marginTop: 4, fontWeight: 600 }}>
+                        Prix de lancement
+                      </div>
+                    </>
                   )}
-
-                  <div style={{ fontSize: 13, fontWeight: 700, color: p.accent, marginBottom: 4, textTransform: 'uppercase', letterSpacing: 1 }}>{p.name}</div>
-                  <div style={{ fontSize: 12, color: '#555', marginBottom: 24 }}>{p.desc}</div>
-
-                  {/* Price */}
-                  <div style={{ marginBottom: 8 }}>
-                    {price === 0 ? (
-                      <div style={{ display: 'flex', alignItems: 'baseline', gap: 4 }}>
-                        <span style={{ fontSize: 44, fontWeight: 900, color: '#f0f0f0', fontFamily: "'Playfair Display', serif", letterSpacing: -1 }}>Gratuit</span>
-                      </div>
-                    ) : (
-                      <>
-                        {originalPrice && (
-                          <div style={{ fontSize: 13, color: '#333', textDecoration: 'line-through', marginBottom: 2 }}>{originalPrice} MAD</div>
-                        )}
-                        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6 }}>
-                          <span style={{ fontSize: 44, fontWeight: 900, color: '#f0f0f0', fontFamily: "'Playfair Display', serif", letterSpacing: -1 }}>{price}</span>
-                          <span style={{ fontSize: 13, color: '#555' }}>MAD</span>
-                        </div>
-                        <div style={{ fontSize: 11, color: '#c8f04e', marginTop: 2, fontWeight: 600 }}>
-                          {billingPlan === 'semester' ? '↘ Prix de lancement (normal : 65 MAD)' : '↘ Prix de lancement (normal : 110 MAD)'}
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  <div style={{ height: 1, background: '#1a1a1a', margin: '20px 0' }} />
-
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
-                    {p.features.map((f, j) => (
-                      <div key={j} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
-                        <span style={{ color: p.accent, fontSize: 13, marginTop: 1, flexShrink: 0 }}>✓</span>
-                        <span style={{ fontSize: 13, color: '#aaa', lineHeight: 1.4 }}>{f}</span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <a href={p.ctaHref} style={{ textDecoration: 'none', display: 'block' }}>
-                    <button style={{
-                      width: '100%', padding: '12px', borderRadius: 10, fontSize: 13, fontWeight: 700,
-                      cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s',
-                      background: p.highlight ? '#c8f04e' : 'transparent',
-                      color: p.highlight ? '#0a0a0a' : p.accent,
-                      border: p.highlight ? 'none' : `1.5px solid ${p.accent}44`,
-                    }}>
-                      {p.cta}
-                    </button>
-                  </a>
                 </div>
-              )
-            })}
-          </div>
 
-          {/* Note */}
+                <div style={{ height: 1, background: '#1a1a1a', margin: '20px 0' }} />
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginBottom: 28 }}>
+                  {p.features.map((f, j) => (
+                    <div key={j} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                      <span style={{ color: p.accent, fontSize: 13, marginTop: 1, flexShrink: 0 }}>✓</span>
+                      <span style={{ fontSize: 13, color: '#aaa', lineHeight: 1.4 }}>{f}</span>
+                    </div>
+                  ))}
+                </div>
+                <a href={p.ctaHref} style={{ textDecoration: 'none', display: 'block' }}>
+                  <button style={{
+                    width: '100%', padding: '12px', borderRadius: 10, fontSize: 13, fontWeight: 700,
+                    cursor: 'pointer', fontFamily: 'inherit', transition: 'all 0.2s',
+                    background: p.highlight ? '#c8f04e' : 'transparent',
+                    color: p.highlight ? '#0a0a0a' : p.accent,
+                    border: p.highlight ? 'none' : `1.5px solid ${p.accent}44`,
+                  }}>
+                    {p.cta}
+                  </button>
+                </a>
+              </div>
+            ))}
+          </div>
           <div style={{ textAlign: 'center', marginTop: 32, fontSize: 12, color: '#333' }}>
             💳 Paiement via virement bancaire ou CashPlus · Accès activé sous 24h
           </div>
@@ -595,7 +563,7 @@ export default function LandingPage() {
           <span style={{ fontSize: 14, fontWeight: 800, color: '#f0f0f0' }}>MedQCM</span>
         </div>
         <div style={{ fontSize: 12, color: '#333' }}>
-          © 2025 MedQCM · Fait pour les étudiants en médecine marocains
+          © 2026 MedQCM · Fait pour les étudiants en médecine marocains
         </div>
       </footer>
     </div>
