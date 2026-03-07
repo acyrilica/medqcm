@@ -49,6 +49,10 @@ const icons = {
   search: "M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z",
   logout: "M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4 M16 17l5-5-5-5 M21 12H9",
   user: "M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2 M12 11a4 4 0 100-8 4 4 0 000 8z",
+  stats: "M18 20V10 M12 20V4 M6 20v-6",
+  calendar: "M8 2v4 M16 2v4 M3 10h18 M3 6a2 2 0 012-2h14a2 2 0 012 2v14a2 2 0 01-2 2H5a2 2 0 01-2-2z",
+  fire: "M8.5 14.5A2.5 2.5 0 0011 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 11-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 002.5 3z",
+  credit: "M2 7a2 2 0 012-2h16a2 2 0 012 2v10a2 2 0 01-2 2H4a2 2 0 01-2-2z M2 11h20",
 };
 
 const cardStyle: React.CSSProperties = { background: "#111", border: "1px solid #1e1e1e", borderRadius: 14, padding: "20px" };
@@ -418,6 +422,152 @@ function Bookmarks({ questions, setPage, setQuizConfig, bookmarkedIds, toggleBoo
   );
 }
 
+
+// ── PROFILE ───────────────────────────────────────────────────────────────────
+function Profile({ userId, userName, userYear, userEmail, quizResults, bookmarkedCount, setPage, handleLogout }: {
+  userId: string; userName: string; userYear: string; userEmail: string;
+  quizResults: any[]; bookmarkedCount: number; setPage: (p: string) => void; handleLogout: () => void;
+}) {
+  const totalQuizzes = quizResults.length;
+  const avgScore = totalQuizzes > 0 ? Math.round(quizResults.reduce((a: number, r: any) => a + r.percentage, 0) / totalQuizzes) : 0;
+
+  // Streak calculation
+  const streak = (() => {
+    if (quizResults.length === 0) return 0;
+    const days = [...new Set(quizResults.map((r: any) => new Date(r.created_at).toDateString()))];
+    const sorted = days.sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+    let count = 0;
+    let current = new Date(); current.setHours(0,0,0,0);
+    for (const d of sorted) {
+      const day = new Date(d); day.setHours(0,0,0,0);
+      const diff = Math.round((current.getTime() - day.getTime()) / 86400000);
+      if (diff <= 1) { count++; current = day; } else break;
+    }
+    return count;
+  })();
+
+  // Per-subject breakdown
+  const subjectMap: Record<string, { total: number; sum: number }> = {};
+  quizResults.forEach((r: any) => {
+    const s = r.subject || "Sans matière";
+    if (!subjectMap[s]) subjectMap[s] = { total: 0, sum: 0 };
+    subjectMap[s].total++;
+    subjectMap[s].sum += r.percentage;
+  });
+  const subjectStats = Object.entries(subjectMap).map(([name, v]) => ({ name, total: v.total, avg: Math.round(v.sum / v.total) })).sort((a, b) => b.total - a.total);
+
+  // Recent history
+  const recent = [...quizResults].sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()).slice(0, 5);
+
+  const scoreColor = (p: number) => p >= 75 ? "#c8f04e" : p >= 50 ? "#f4a821" : "#f04e4e";
+  const initials = userName.split(" ").map((w: string) => w[0]).join("").toUpperCase().slice(0, 2) || "??";
+
+  return (
+    <div style={{ maxWidth: 700 }}>
+      {/* Header card */}
+      <div style={{ ...cardStyle, marginBottom: 16, padding: "28px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 20, marginBottom: 24 }}>
+          <div style={{ width: 64, height: 64, background: "#c8f04e22", border: "2px solid #c8f04e44", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: 800, color: "#c8f04e", flexShrink: 0 }}>
+            {initials}
+          </div>
+          <div style={{ flex: 1 }}>
+            <div style={{ fontSize: 20, fontWeight: 800, color: "#f0f0f0", fontFamily: "'Playfair Display', serif" }}>{userName}</div>
+            {userYear && <div style={{ fontSize: 13, color: "#c8f04e", marginTop: 2 }}>{userYear}</div>}
+            {userEmail && <div style={{ fontSize: 12, color: "#444", marginTop: 2 }}>{userEmail}</div>}
+          </div>
+          <div style={{ fontSize: 10, background: "#c8f04e22", color: "#c8f04e", border: "1px solid #c8f04e44", borderRadius: 20, padding: "4px 12px", fontWeight: 700, letterSpacing: 1 }}>ACTIF</div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+          {[
+            { icon: "🎯", label: "Quiz complétés", value: totalQuizzes, color: "#c8f04e" },
+            { icon: "🔥", label: "Jours consécutifs", value: `${streak}j`, color: "#f4a821" },
+            { icon: "📌", label: "Favoris", value: bookmarkedCount, color: "#4e80f0" },
+          ].map((s, i) => (
+            <div key={i} style={{ background: "#0d0d0d", borderRadius: 12, padding: "14px", textAlign: "center" }}>
+              <div style={{ fontSize: 20, marginBottom: 4 }}>{s.icon}</div>
+              <div style={{ fontSize: 22, fontWeight: 800, color: s.color }}>{s.value}</div>
+              <div style={{ fontSize: 11, color: "#555", marginTop: 2 }}>{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Subscription card */}
+      <div style={{ ...cardStyle, marginBottom: 16 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+          <Icon d={icons.credit} size={15} />
+          <div style={{ fontSize: 14, fontWeight: 700, color: "#e0e0e0" }}>Abonnement</div>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid #1a1a1a" }}>
+          <div style={{ fontSize: 13, color: "#888" }}>Plan actuel</div>
+          <div style={{ fontSize: 12, background: "#c8f04e22", color: "#c8f04e", border: "1px solid #c8f04e44", borderRadius: 20, padding: "3px 10px", fontWeight: 700 }}>Gratuit</div>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0", borderBottom: "1px solid #1a1a1a" }}>
+          <div style={{ fontSize: 13, color: "#888" }}>Date de paiement</div>
+          <div style={{ fontSize: 13, color: "#444" }}>— (non lié)</div>
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "12px 0" }}>
+          <div style={{ fontSize: 13, color: "#888" }}>Accès jusqu'au</div>
+          <div style={{ fontSize: 13, color: "#444" }}>—</div>
+        </div>
+        <button onClick={() => setPage("home")} style={{ ...btnStyle("#c8f04e", "#0a0a0a"), width: "100%", marginTop: 8, fontSize: 13 }}>
+          ⚡ Passer au plan Semestre — 50 MAD
+        </button>
+      </div>
+
+      {/* Per-subject breakdown */}
+      {subjectStats.length > 0 && (
+        <div style={{ ...cardStyle, marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+            <Icon d={icons.stats} size={15} />
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#e0e0e0" }}>Par matière</div>
+          </div>
+          {subjectStats.map((s, i) => (
+            <div key={i} style={{ marginBottom: 14 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+                <div style={{ fontSize: 13, color: "#ccc", fontWeight: 600 }}>{s.name}</div>
+                <div style={{ display: "flex", gap: 10, alignItems: "center" }}>
+                  <span style={{ fontSize: 11, color: "#555" }}>{s.total} quiz</span>
+                  <span style={{ fontSize: 13, fontWeight: 700, color: scoreColor(s.avg) }}>{s.avg}%</span>
+                </div>
+              </div>
+              <div style={{ height: 5, background: "#1a1a1a", borderRadius: 4, overflow: "hidden" }}>
+                <div style={{ width: `${s.avg}%`, height: "100%", background: scoreColor(s.avg), borderRadius: 4, transition: "width 0.5s" }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Recent activity */}
+      {recent.length > 0 && (
+        <div style={{ ...cardStyle, marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16 }}>
+            <Icon d={icons.calendar} size={15} />
+            <div style={{ fontSize: 14, fontWeight: 700, color: "#e0e0e0" }}>Activité récente</div>
+          </div>
+          {recent.map((r: any, i: number) => (
+            <div key={i} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: "10px 0", borderBottom: i < recent.length - 1 ? "1px solid #1a1a1a" : "none" }}>
+              <div>
+                <div style={{ fontSize: 13, color: "#ccc", fontWeight: 600 }}>{r.subject || "Quiz général"}</div>
+                <div style={{ fontSize: 11, color: "#444", marginTop: 2 }}>
+                  {r.mode === "exam" ? "⌛ Examen" : "⚡ Entraînement"} · {r.total} questions · {new Date(r.created_at).toLocaleDateString("fr-FR")}
+                </div>
+              </div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: scoreColor(r.percentage) }}>{r.percentage}%</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Logout */}
+      <button onClick={handleLogout} style={{ ...btnStyle("transparent", "#f04e4e", "#f04e4e33"), width: "100%", fontSize: 13 }}>
+        Déconnexion
+      </button>
+    </div>
+  );
+}
+
 // ── ADMIN ─────────────────────────────────────────────────────────────────────
 function Admin({ questions }: { questions: Question[] }) {
   const [tab, setTab] = useState("questions");
@@ -534,8 +684,10 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userName, setUserName] = useState("");
+  const [userEmail, setUserEmail] = useState("");
   const [userId, setUserId] = useState("");
-  const [bookmarkedIds, setBookmarkedIds] = useState<Set<number>>(new Set()); 
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<number>>(new Set());
+  const [quizResults, setQuizResults] = useState<any[]>([]); 
   const [userYear, setUserYear] = useState("");
   const [isDesktop, setIsDesktop] = useState(false);
   const supabase = createClient();
@@ -564,7 +716,10 @@ export default function App() {
         if (userData.user) {
           const meta = userData.user.user_metadata;
           setUserId(userData.user.id);
+          setUserEmail(userData.user.email || "");
           const { data: bData } = await supabase.from('bookmarks').select('question_id').eq('user_id', userData.user.id);
+          const { data: rData } = await supabase.from('quiz_results').select('*').eq('user_id', userData.user.id).order('created_at', { ascending: false });
+          if (rData) setQuizResults(rData);
           if (bData) setBookmarkedIds(new Set(bData.map((b: any) => b.question_id)));
           setUserName(meta?.name || userData.user.email?.split('@')[0] || 'Étudiant');
           
@@ -608,6 +763,7 @@ export default function App() {
       {page === "quizlist" && <QuizList questions={questions} setPage={setPage} setQuizConfig={setQuizConfig} />}
       {page === "bookmarks" && <Bookmarks questions={questions} setPage={setPage} setQuizConfig={setQuizConfig} bookmarkedIds={bookmarkedIds} toggleBookmark={toggleBookmark} />}
       {page === "admin" && <Admin questions={questions} />}
+      {page === "profile" && <Profile userId={userId} userName={userName} userYear={userYear} userEmail={userEmail} quizResults={quizResults} bookmarkedCount={bookmarkedIds.size} setPage={setPage} handleLogout={handleLogout} />}
     </>
   );
 
@@ -655,7 +811,7 @@ export default function App() {
               ))}
             </div>
             <div style={{ padding: "12px 10px", borderTop: "1px solid #1a1a1a" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "#111", borderRadius: 10, marginBottom: 8 }}>
+              <div onClick={() => setPage("profile")} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 12px", background: "#111", borderRadius: 10, marginBottom: 8, cursor: "pointer" }}>
                 <div style={{ width: 32, height: 32, background: "#c8f04e22", border: "1px solid #c8f04e44", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <Icon d={icons.user} size={15} />
                 </div>
@@ -700,7 +856,7 @@ export default function App() {
             <div style={{ width: 30, height: 30, background: "#c8f04e", borderRadius: 8, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 15, flexShrink: 0 }}>☑</div>
             <span style={{ fontSize: 15, fontWeight: 800, color: "#f0f0f0" }}>MedQCM</span>
             <div style={{ flex: 1, fontSize: 11, color: "#444", fontStyle: "italic", textAlign: "center", overflow: "hidden", whiteSpace: "nowrap", textOverflow: "ellipsis" }}>{quote}</div>
-            <div style={{ width: 28, height: 28, background: "#c8f04e22", border: "1px solid #c8f04e33", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <div onClick={() => setPage("profile")} style={{ width: 28, height: 28, background: "#c8f04e22", border: "1px solid #c8f04e33", borderRadius: "50%", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, cursor: "pointer" }}>
               <Icon d={icons.user} size={13} />
             </div>
           </div>
