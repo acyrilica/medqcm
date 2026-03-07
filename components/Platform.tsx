@@ -89,12 +89,12 @@ function OptionBtn({ label, text, selected, feedback, isCorrectOpt, isMulti, dis
 }
 
 // ── QUIZ ──────────────────────────────────────────────────────────────────────
-function Quiz({ config, setPage, userId }: { config: QuizConfig; setPage: (p: string) => void; userId: string }) {
+function Quiz({ config, setPage, userId, bookmarkedIds, toggleBookmark }: { config: QuizConfig; setPage: (p: string) => void; userId: string; bookmarkedIds: Set<number>; toggleBookmark: (id: number) => void }) {
   const { questions, mode } = config;
   const [selections, setSelections] = useState<Record<number, Set<number>>>({});
   const [confirmed, setConfirmed] = useState<Set<number>>(new Set());
   const [flagged, setFlagged] = useState<Set<number>>(new Set());
-  const [bookmarked, setBookmarked] = useState<Set<number>>(new Set());
+  // bookmarked state comes from props
   const [idx, setIdx] = useState(0);
   const [phase, setPhase] = useState<'question' | 'results'>('question');
   const [timeLeft, setTimeLeft] = useState<number | null>(mode === "exam" ? questions.length * 90 : null);
@@ -265,7 +265,7 @@ function Quiz({ config, setPage, userId }: { config: QuizConfig; setPage: (p: st
       <div style={{ position: "fixed", bottom: 0, left: 0, right: 0, background: "#0d0d0d", borderTop: "1px solid #1a1a1a", padding: "12px 20px", display: "flex", gap: 10, justifyContent: "space-between", alignItems: "center", zIndex: 10 }}>
         <div style={{ display: "flex", gap: 8 }}>
           <button onClick={() => setFlagged((prev: Set<number>) => { const n = new Set(prev); n.has(idx) ? n.delete(idx) : n.add(idx); return n; })} style={{ background: flagged.has(idx) ? "#f4a82122" : "#111", border: `1px solid ${flagged.has(idx) ? "#f4a821" : "#2a2a2a"}`, borderRadius: 8, padding: "8px 10px", cursor: "pointer", color: flagged.has(idx) ? "#f4a821" : "#555" }}><Icon d={icons.flag} size={15} /></button>
-          <button onClick={() => setBookmarked((prev: Set<number>) => { const n = new Set(prev); n.has(idx) ? n.delete(idx) : n.add(idx); return n; })} style={{ background: bookmarked.has(idx) ? "#4e80f022" : "#111", border: `1px solid ${bookmarked.has(idx) ? "#4e80f0" : "#2a2a2a"}`, borderRadius: 8, padding: "8px 10px", cursor: "pointer", color: bookmarked.has(idx) ? "#4e80f0" : "#555" }}><Icon d={icons.bookmark} size={15} /></button>
+          <button onClick={() => toggleBookmark(q.id)} style={{ background: bookmarkedIds.has(q.id) ? "#4e80f022" : "#111", border: `1px solid ${bookmarkedIds.has(q.id) ? "#4e80f0" : "#2a2a2a"}`, borderRadius: 8, padding: "8px 10px", cursor: "pointer", color: bookmarkedIds.has(q.id) ? "#4e80f0" : "#555" }}><Icon d={icons.bookmark} size={15} /></button>
         </div>
         <div style={{ display: "flex", gap: 8 }}>
           {idx > 0 && <button onClick={() => setIdx((i: number) => i - 1)} style={{ background: "#1a1a1a", border: "1px solid #2a2a2a", color: "#ccc", borderRadius: 10, padding: "10px 18px", fontSize: 13, cursor: "pointer", fontWeight: 600 }}>← Préc.</button>}
@@ -376,10 +376,10 @@ function QuizList({ questions, setPage, setQuizConfig }: { questions: Question[]
 }
 
 // ── BOOKMARKS ─────────────────────────────────────────────────────────────────
-function Bookmarks({ questions, setPage, setQuizConfig }: { questions: Question[]; setPage: (p: string) => void; setQuizConfig: (c: QuizConfig) => void }) {
+function Bookmarks({ questions, setPage, setQuizConfig, bookmarkedIds, toggleBookmark }: { questions: Question[]; setPage: (p: string) => void; setQuizConfig: (c: QuizConfig) => void; bookmarkedIds: Set<number>; toggleBookmark: (id: number) => void }) {
   const [tab, setTab] = useState<'bookmarks' | 'mistakes'>('bookmarks');
-  const bookmarked = questions.slice(0, Math.min(3, questions.length));
-  const mistakes = questions.slice(Math.max(0, questions.length - 3));
+  const bookmarked = questions.filter((q: Question) => bookmarkedIds.has(q.id));
+  const mistakes: Question[] = []; // will be wired to quiz_results later
   const current = tab === 'bookmarks' ? bookmarked : mistakes;
 
   return (
@@ -534,7 +534,8 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userName, setUserName] = useState("");
-  const [userId, setUserId] = useState(""); 
+  const [userId, setUserId] = useState("");
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<number>>(new Set()); 
   const [userYear, setUserYear] = useState("");
   const [isDesktop, setIsDesktop] = useState(false);
   const supabase = createClient();
@@ -563,6 +564,8 @@ export default function App() {
         if (userData.user) {
           const meta = userData.user.user_metadata;
           setUserId(userData.user.id);
+          const { data: bData } = await supabase.from('bookmarks').select('question_id').eq('user_id', userData.user.id);
+          if (bData) setBookmarkedIds(new Set(bData.map((b: any) => b.question_id)));
           setUserName(meta?.name || userData.user.email?.split('@')[0] || 'Étudiant');
           
           setUserYear(meta?.year ? `${meta.year}ème année` : '');
@@ -574,6 +577,21 @@ export default function App() {
     };
     loadData();
   }, []);
+
+  const toggleBookmark = async (questionId: number) => {
+    if (!userId) return;
+    const isBookmarked = bookmarkedIds.has(questionId);
+    setBookmarkedIds(prev => {
+      const next = new Set(prev);
+      isBookmarked ? next.delete(questionId) : next.add(questionId);
+      return next;
+    });
+    if (isBookmarked) {
+      await supabase.from('bookmarks').delete().eq('user_id', userId).eq('question_id', questionId);
+    } else {
+      await supabase.from('bookmarks').insert({ user_id: userId, question_id: questionId });
+    }
+  };
 
   const handleLogout = async () => { await supabase.auth.signOut(); window.location.href = '/'; };
 
@@ -588,7 +606,7 @@ export default function App() {
     <>
       {page === "home" && <Dashboard questions={questions} setPage={setPage} setQuizConfig={setQuizConfig} />}
       {page === "quizlist" && <QuizList questions={questions} setPage={setPage} setQuizConfig={setQuizConfig} />}
-      {page === "bookmarks" && <Bookmarks questions={questions} setPage={setPage} setQuizConfig={setQuizConfig} />}
+      {page === "bookmarks" && <Bookmarks questions={questions} setPage={setPage} setQuizConfig={setQuizConfig} bookmarkedIds={bookmarkedIds} toggleBookmark={toggleBookmark} />}
       {page === "admin" && <Admin questions={questions} />}
     </>
   );
@@ -603,7 +621,7 @@ export default function App() {
   if (page === "quiz" && quizConfig) return (
     <div style={{ fontFamily: "'DM Sans', sans-serif", background: "#0a0a0a", color: "#e0e0e0", minHeight: "100vh" }}>
       <style>{`@import url('https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;600;700;800&family=Playfair+Display:wght@700;800;900&display=swap'); * { box-sizing: border-box; } button,input,textarea,select { font-family: inherit; }`}</style>
-      <Quiz config={quizConfig} setPage={setPage} userId={userId} />
+      <Quiz config={quizConfig} setPage={setPage} userId={userId} bookmarkedIds={bookmarkedIds} toggleBookmark={toggleBookmark} />
     </div>
   );
 
