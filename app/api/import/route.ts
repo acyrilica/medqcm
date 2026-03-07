@@ -3,7 +3,6 @@ import { NextRequest, NextResponse } from 'next/server'
 
 export async function POST(req: NextRequest) {
   try {
-    // Use browser client directly - skip auth check for now
     const supabase = createClient()
 
     const { questions } = await req.json()
@@ -17,7 +16,6 @@ export async function POST(req: NextRequest) {
 
     for (const q of questions) {
       try {
-        // Upsert subject
         let subjectId: number | null = null
         if (q.subject) {
           const { data: subject, error: subjectError } = await supabase
@@ -27,20 +25,7 @@ export async function POST(req: NextRequest) {
           if (subjectError) throw new Error(`Subject error: ${subjectError.message}`)
           subjectId = subject?.id ?? null
         }
-        if (q.subject) {
-          const { data: subject, error: subjectError } = await supabase
-            .from('subjects')
-            .upsert({ name: q.subject }, { onConflict: 'name' })
-            .select('id').single()
-          
-          console.log("SUBJECT DATA:", subject)
-          console.log("SUBJECT ERROR:", JSON.stringify(subjectError))
-          
-          if (subjectError) throw new Error(`Subject error: ${subjectError.message}`)
-          subjectId = subject?.id ?? null
-        }
 
-        // Upsert module
         let moduleId: number | null = null
         if (q.module && subjectId) {
           const { data: mod, error: modError } = await supabase
@@ -51,7 +36,6 @@ export async function POST(req: NextRequest) {
           moduleId = mod?.id ?? null
         }
 
-        // Insert question
         const { data: question, error: qError } = await supabase
           .from('questions')
           .insert({
@@ -65,7 +49,6 @@ export async function POST(req: NextRequest) {
           .select('id').single()
         if (qError) throw new Error(`Question error: ${qError.message}`)
 
-        // Insert options
         if (q.options && q.options.length > 0) {
           const { error: optError } = await supabase.from('options').insert(
             q.options.map((text: string, i: number) => ({
