@@ -129,7 +129,7 @@ function Quiz({ config, setPage, userId }: { config: QuizConfig; setPage: (p: st
   const goSubmit = () => { if (timerRef.current) clearInterval(timerRef.current); setPhase("results"); };
   useEffect(() => {
   if (phase !== "results" || !userId) return;
-  console.log("Saving result for userId:", userId)
+  
   const saveResult = async () => {
     try {
       const supabase = createClient();
@@ -562,6 +562,7 @@ export default function App() {
         const { data: userData } = await supabase.auth.getUser();
         if (userData.user) {
           const meta = userData.user.user_metadata;
+          setUserId(userData.user.id);
           setUserName(meta?.name || userData.user.email?.split('@')[0] || 'Étudiant');
           
           setUserYear(meta?.year ? `${meta.year}ème année` : '');

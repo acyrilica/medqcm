@@ -39,8 +39,8 @@ export default function LandingPage() {
     },
     {
       icon: '📁',
-      title: 'Import CSV',
-      desc: "Les admins importent des centaines de questions en secondes via CSV. Format simple, validation automatique.",
+      title: 'Accès aux cours',
+      desc: "Pour une révision efficace, ou pour vérifier une information rapidement, vous auriez l'accès aux cours pour faciliter la révision",
     },
   ]
 
